@@ -72,11 +72,8 @@ function App() {
     }
   }, [sdkAudioElement]);
 
-  // Add auto-disconnect timer state
-  const [lastUserActivity, setLastUserActivity] = useState<number>(Date.now());
-  const [autoDisconnectTimer, setAutoDisconnectTimer] = useState<NodeJS.Timeout | null>(null);
+  // Session state
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("DISCONNECTED");
-  const AUTO_DISCONNECT_TIMEOUT = 30000; // 30 seconds
 
   const { preferredLanguage, setPreferredLanguage } = useLanguage();
 
@@ -99,54 +96,12 @@ function App() {
   } = useRealtimeSession({
     onConnectionChange: (status) => {
       setSessionStatus(status);
-      if (status === "DISCONNECTED") {
-        clearAutoDisconnectTimer();
-      } else if (status === "CONNECTED") {
-        refreshUserActivity(); // Start timer when connected
-      }
     },
     onAgentHandoff: (agentName: string) => {
       handoffTriggeredRef.current = true;
       setSelectedAgentName(agentName);
     },
   });
-
-  // Auto-disconnect timer functions with proper cleanup
-  const clearAutoDisconnectTimer = useCallback(() => {
-    if (autoDisconnectTimer) {
-      clearTimeout(autoDisconnectTimer);
-      setAutoDisconnectTimer(null);
-    }
-  }, [autoDisconnectTimer]);
-
-  const refreshUserActivity = useCallback(() => {
-    setLastUserActivity(Date.now());
-    clearAutoDisconnectTimer();
-    
-    // Start new timer only if connected
-    if (sessionStatus === "CONNECTED") {
-      const timer = setTimeout(() => {
-        console.log('Auto-disconnecting due to inactivity');
-        disconnect();
-      }, AUTO_DISCONNECT_TIMEOUT);
-      
-      setAutoDisconnectTimer(timer);
-    }
-  }, [clearAutoDisconnectTimer, disconnect, AUTO_DISCONNECT_TIMEOUT, sessionStatus]);
-
-  // Cleanup timer on component unmount or status change
-  useEffect(() => {
-    return () => {
-      clearAutoDisconnectTimer();
-    };
-  }, [clearAutoDisconnectTimer]);
-
-  // Clear timer when disconnected
-  useEffect(() => {
-    if (sessionStatus === "DISCONNECTED") {
-      clearAutoDisconnectTimer();
-    }
-  }, [sessionStatus, clearAutoDisconnectTimer]);
 
   const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
     useState<boolean>(true);
@@ -210,10 +165,6 @@ function App() {
     }
   }, [preferredLanguage]);
 
-  // REMOVED: Problematic auto-disconnect on language change
-  // In manual mode, users control their own connections
-  // Language preference is passed via extraContext when connecting
-
   useEffect(() => {
     if (
       sessionStatus === "CONNECTED" &&
@@ -224,7 +175,7 @@ function App() {
         (a) => a.name === selectedAgentName
       );
       addTranscriptBreadcrumb(`Agent: ${selectedAgentName}`, currentAgent);
-      updateSession(!handoffTriggeredRef.current);
+      // updateSession(!handoffTriggeredRef.current); // This line is removed
       // Reset flag after handling so subsequent effects behave normally
       handoffTriggeredRef.current = false;
     }
@@ -232,7 +183,7 @@ function App() {
 
   useEffect(() => {
     if (sessionStatus === "CONNECTED") {
-      updateSession();
+      // updateSession(); // This line is removed
     }
   }, [isPTTActive]);
 
@@ -298,11 +249,11 @@ function App() {
   const disconnectFromRealtime = () => {
     disconnect();
     setIsPTTUserSpeaking(false);
-    clearAutoDisconnectTimer();
+    // clearAutoDisconnectTimer(); // This line is removed
   };
 
   const sendSimulatedUserMessage = async (text: string) => {
-    refreshUserActivity(); // Track user activity
+    // refreshUserActivity(); // Track user activity // This line is removed
     const id = uuidv4().slice(0, 32);
     await addTranscriptMessage(id, "user", text, true);
 
@@ -348,7 +299,7 @@ function App() {
 
   const handleSendTextMessage = () => {
     if (!userText.trim()) return;
-    refreshUserActivity(); // Track user activity
+    // refreshUserActivity(); // Track user activity // This line is removed
     interrupt();
 
     try {
@@ -362,7 +313,7 @@ function App() {
 
   const handleTalkButtonDown = () => {
     if (sessionStatus !== 'CONNECTED') return;
-    refreshUserActivity(); // Track user activity for push-to-talk
+    // refreshUserActivity(); // Track user activity for push-to-talk // This line is removed
     interrupt();
 
     setIsPTTUserSpeaking(true);
