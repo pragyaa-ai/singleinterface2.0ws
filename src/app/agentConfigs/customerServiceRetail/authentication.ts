@@ -61,11 +61,10 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
   This call is regarding the verification of your store's address and other business details for your Google Business Profile (GBP).
   We already have your basic details, but we need to confirm and verify them before publishing your listing.
 
-
 # Reference Pronunciations
-- “Single Interface”: SINGLE-IN-TER-FACE
-- “Google Business Profile”: GOOGLE-BUSINESS-PROFILE
-- “GBP”: G-B-P
+- "Single Interface": SINGLE-IN-TER-FACE
+- "Google Business Profile": GOOGLE-BUSINESS-PROFILE
+- "GBP": G-B-P
 
 # Language and Script Adherence
 - This is a CRITICAL instruction. You must follow it without fail.
@@ -226,9 +225,138 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
     "transitions": []
   }
 ]
+
+# Data Collection Instructions
+- **CRITICAL**: You have access to data capture tools that automatically save store information to the system.
+- **ALWAYS** use the \`capture_store_data\` tool immediately when a customer provides any of these data points:
+  - Store ID/Code: Use data_type "store_id"
+  - Address Line 1: Use data_type "address_line_1"
+  - Locality: Use data_type "locality"
+  - Landmark: Use data_type "landmark"
+  - City: Use data_type "city"
+  - State: Use data_type "state"
+  - PIN Code: Use data_type "pin_code"
+  - Business Hours: Use data_type "business_hours"
+  - Weekly Off: Use data_type "weekly_off"
+  - Main Phone Number with STD: Use data_type "main_phone_std"
+  - Store Manager's Number: Use data_type "manager_number"
+  - Store Email ID: Use data_type "store_email"
+  - Store Manager's Email ID: Use data_type "manager_email"
+  - Designation of Person: Use data_type "designation"
+  - Parking Options: Use data_type "parking_options"
+  - Payment Methods Accepted: Use data_type "payment_methods"
+  - Alternate Number: Use data_type "alternate_number"
+
+## CONFIRMATION PROTOCOL (MANDATORY):
+- **STEP 1**: IMMEDIATELY capture the data using \`capture_store_data\` tool
+- **STEP 2**: IMMEDIATELY repeat back the captured information to the customer for confirmation
+- **STEP 3**: Wait for explicit confirmation before proceeding to next topic
+- **EXAMPLE**: "Let me confirm that - I've recorded your email as info@pragyaa.ai. Is that correct?"
+- **IF INCORRECT**: Ask customer to provide the correct information again and re-capture
+- **NEVER** proceed without getting "yes", "correct", "right" or similar confirmation
+- **CRITICAL**: Pay special attention to spelling, numbers, and exact details - especially for emails, phone numbers, and addresses
+
+## ESCALATION PROTOCOL (MANDATORY):
+- **ATTEMPT LIMIT**: Maximum 2 attempts to capture any single data point correctly
+- **AFTER 2 FAILED ATTEMPTS**: 
+  1. Use \`capture_store_data\` with value "REQUIRES_EXPERT_REVIEW" and add note about the issue
+  2. Say: "I'm having trouble capturing this information accurately. Don't worry - one of our experts will call you back within 24 hours to verify this specific detail. Let me continue with the other information for now."
+  3. **IMMEDIATELY** move to the next data point or verification step
+- **DO NOT** spend more than 2 attempts on any single data point
+- **ALWAYS** continue the verification process rather than getting stuck
+
+- Use \`verify_captured_data\` tool when double-checking or confirming information with the customer
+- **DO NOT** ask for data you've already captured and confirmed unless verification is needed
+- The system will track all captured data in real-time for the business team
 `,
 
   tools: [
+    tool({
+      name: "capture_store_data",
+      description: "Capture store verification data points during the conversation. Use this whenever the customer provides store-related information.",
+      parameters: {
+        type: "object",
+        properties: {
+          data_type: {
+            type: "string",
+            enum: ["store_id", "address_line_1", "locality", "landmark", "city", "state", "pin_code", "business_hours", "weekly_off", "main_phone_std", "manager_number", "store_email", "manager_email", "designation", "parking_options", "payment_methods", "alternate_number"],
+            description: "The type of data being captured"
+          },
+          value: {
+            type: "string",
+            description: "The actual value of the data point provided by the customer"
+          },
+          verification_status: {
+            type: "string",
+            enum: ["captured", "verified"],
+            description: "Whether the data is just captured or has been verified"
+          }
+        },
+        required: ["data_type", "value"],
+        additionalProperties: false,
+      },
+      execute: async (input, details) => {
+        // Access the data collection context through the details
+        const typedInput = input as { data_type: string; value: string; verification_status?: string };
+        const context = details?.context as any;
+        if (context?.captureDataPoint) {
+          context.captureDataPoint(typedInput.data_type, typedInput.value, typedInput.verification_status || 'captured');
+          console.log(`[Agent Data Capture] ${typedInput.data_type}: ${typedInput.value}`);
+          return { 
+            success: true, 
+            message: `Successfully captured ${typedInput.data_type}: ${typedInput.value}`,
+            data_type: typedInput.data_type,
+            value: typedInput.value
+          };
+        } else {
+          console.warn('[Agent Data Capture] Data collection context not available');
+          return { 
+            success: false, 
+            message: "Data collection context not available" 
+          };
+        }
+      },
+    }),
+    tool({
+      name: "verify_captured_data",
+      description: "Verify a previously captured data point by confirming it with the customer. Use when double-checking information.",
+      parameters: {
+        type: "object",
+        properties: {
+          data_type: {
+            type: "string",
+            enum: ["store_id", "address_line_1", "locality", "landmark", "city", "state", "pin_code", "business_hours", "weekly_off", "main_phone_std", "manager_number", "store_email", "manager_email", "designation", "parking_options", "payment_methods", "alternate_number"],
+            description: "The type of data being verified"
+          },
+          confirmed_value: {
+            type: "string",
+            description: "The value confirmed by the customer"
+          }
+        },
+        required: ["data_type", "confirmed_value"],
+        additionalProperties: false,
+      },
+      execute: async (input, details) => {
+        const typedInput = input as { data_type: string; confirmed_value: string };
+        const context = details?.context as any;
+        if (context?.captureDataPoint) {
+          context.captureDataPoint(typedInput.data_type, typedInput.confirmed_value, 'verified');
+          console.log(`[Agent Data Verification] Verified ${typedInput.data_type}: ${typedInput.confirmed_value}`);
+          return { 
+            success: true, 
+            message: `Successfully verified ${typedInput.data_type}: ${typedInput.confirmed_value}`,
+            data_type: typedInput.data_type,
+            value: typedInput.confirmed_value,
+            status: 'verified'
+          };
+        } else {
+          return { 
+            success: false, 
+            message: "Data collection context not available" 
+          };
+        }
+      },
+    }),
     tool({
       name: "authenticate_user_information",
       description:

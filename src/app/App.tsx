@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
@@ -20,6 +20,7 @@ import { useEvent } from "@/app/contexts/EventContext";
 import { useRealtimeSession } from "./hooks/useRealtimeSession";
 import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 import { useLanguage } from "@/app/contexts/LanguageContext";
+import { useDataCollection } from "./contexts/DataCollectionContext";
 
 // Agent configs
 import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
@@ -76,6 +77,7 @@ function App() {
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("DISCONNECTED");
 
   const { preferredLanguage, setPreferredLanguage } = useLanguage();
+  const { captureDataPoint } = useDataCollection();
 
   // Codec selector – lets you toggle between wide-band Opus (48 kHz)
   // and narrow-band PCMU/PCMA (8 kHz) to hear what the agent sounds like on
@@ -234,6 +236,7 @@ function App() {
           extraContext: {
             addTranscriptBreadcrumb,
             preferredLanguage: preferredLanguage,
+            captureDataPoint,
           },
         });
         

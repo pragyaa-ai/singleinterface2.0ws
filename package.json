@@ -1,6 +1,6 @@
 {
-  "name": "singleinterface-voiceagent",
-  "version": "0.1.0",
+  "name": "openai-realtime-agents",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
