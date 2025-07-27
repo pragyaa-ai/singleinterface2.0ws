@@ -6,9 +6,9 @@ import type { RealtimeAgent } from '@openai/agents/realtime';
 
 // Map of scenario key -> array of RealtimeAgent objects
 export const allAgentSets: Record<string, RealtimeAgent[]> = {
-  simpleHandoff: simpleHandoffScenario,
-  customerServiceRetail: customerServiceRetailScenario,
-  chatSupervisor: chatSupervisorScenario,
+  // simpleHandoff: simpleHandoffScenario,
+  SingleInterface: customerServiceRetailScenario,
+  // chatSupervisor: chatSupervisorScenario,
 };
 
-export const defaultAgentSetKey = 'chatSupervisor';
+export const defaultAgentSetKey = 'SingleInterface';

@@ -1,8 +1,44 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { useTranscript } from "@/app/contexts/TranscriptContext";
 import { useEvent } from "@/app/contexts/EventContext";
+import OpenAI from 'openai';
+
+async function correctTextScript(text: string): Promise<string> {
+  const devanagariRegex = /[\u0900-\u097F]/;
+
+  if (devanagariRegex.test(text)) {
+    return text;
+  }
+
+  try {
+    const openai = new OpenAI({
+      apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+      dangerouslyAllowBrowser: true,
+    });
+
+    const correctionResponse = await openai.chat.completions.create({
+      model: "gpt-4-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are a language expert. Your task is to transliterate the given text into the Devanagari script for Hindi. Do not translate. Only provide the transliterated text."
+        },
+        {
+          role: "user",
+          content: `Please transliterate the following text to the Devanagari script: "${text}"`
+        }
+      ],
+      temperature: 0,
+    });
+
+    return correctionResponse.choices[0].message.content || text;
+  } catch (err) {
+    console.error('Error during text correction:', err);
+    return text;
+  }
+}
 
 export function useHandleSessionHistory() {
   const {
@@ -85,7 +121,7 @@ export function useHandleSessionHistory() {
     );
   }
 
-  function handleHistoryAdded(item: any) {
+  async function handleHistoryAdded(item: any) {
     console.log("[handleHistoryAdded] ", item);
     if (!item || item.type !== 'message') return;
 
@@ -105,14 +141,14 @@ export function useHandleSessionHistory() {
         const failureDetails = JSON.parse(guardrailMessage);
         addTranscriptBreadcrumb('Output Guardrail Active', { details: failureDetails });
       } else {
-        addTranscriptMessage(itemId, role, text);
+        await addTranscriptMessage(itemId, role, text);
       }
     }
   }
 
-  function handleHistoryUpdated(items: any[]) {
+  async function handleHistoryUpdated(items: any[]) {
     console.log("[handleHistoryUpdated] ", items);
-    items.forEach((item: any) => {
+    items.forEach(async (item: any) => {
       if (!item || item.type !== 'message') return;
 
       const { itemId, content = [] } = item;
@@ -120,20 +156,20 @@ export function useHandleSessionHistory() {
       const text = extractMessageText(content);
 
       if (text) {
-        updateTranscriptMessage(itemId, text, false);
+        await updateTranscriptMessage(itemId, text, false);
       }
     });
   }
 
-  function handleTranscriptionDelta(item: any) {
+  async function handleTranscriptionDelta(item: any) {
     const itemId = item.item_id;
     const deltaText = item.delta || "";
     if (itemId) {
-      updateTranscriptMessage(itemId, deltaText, true);
+      await updateTranscriptMessage(itemId, deltaText, true);
     }
   }
 
-  function handleTranscriptionCompleted(item: any) {
+  async function handleTranscriptionCompleted(item: any) {
     // History updates don't reliably end in a completed item, 
     // so we need to handle finishing up when the transcription is completed.
     const itemId = item.item_id;
@@ -142,7 +178,8 @@ export function useHandleSessionHistory() {
         ? "[inaudible]"
         : item.transcript;
     if (itemId) {
-      updateTranscriptMessage(itemId, finalTranscript, false);
+      console.log(`[DEBUG] handleTranscriptionCompleted: finalTranscript="${finalTranscript}"`);
+      await updateTranscriptMessage(itemId, finalTranscript, false);
       // Use the ref to get the latest transcriptItems
       const transcriptItem = transcriptItems.find((i) => i.itemId === itemId);
       updateTranscriptItem(itemId, { status: 'DONE' });

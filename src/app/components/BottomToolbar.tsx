@@ -1,6 +1,19 @@
 import React from "react";
 import { SessionStatus } from "@/app/types";
 
+// Simple SVG icons to replace heroicons
+const ChevronLeftIcon = () => (
+  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+  </svg>
+);
+
+const ChevronRightIcon = () => (
+  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+  </svg>
+);
+
 interface BottomToolbarProps {
   sessionStatus: SessionStatus;
   onToggleConnection: () => void;
@@ -117,16 +130,16 @@ function BottomToolbar({
       </div>
 
       <div className="flex flex-row items-center gap-2">
-        <input
-          id="logs"
-          type="checkbox"
-          checked={isEventsPaneExpanded}
-          onChange={(e) => setIsEventsPaneExpanded(e.target.checked)}
-          className="w-4 h-4"
-        />
-        <label htmlFor="logs" className="flex items-center cursor-pointer">
-          Logs
-        </label>
+        <button
+          onClick={() => setIsEventsPaneExpanded(!isEventsPaneExpanded)}
+          className="p-2 rounded-full hover:bg-gray-200"
+          title={isEventsPaneExpanded ? "Collapse Details" : "Expand Details"}
+        >
+          {isEventsPaneExpanded ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+        </button>
+        <div className="text-sm font-medium">
+          {isEventsPaneExpanded ? "Hide Agent View" : "Show Agent View"}
+        </div>
       </div>
 
       <div className="flex flex-row items-center gap-2">

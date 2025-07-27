@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
@@ -19,6 +19,7 @@ import { useTranscript } from "@/app/contexts/TranscriptContext";
 import { useEvent } from "@/app/contexts/EventContext";
 import { useRealtimeSession } from "./hooks/useRealtimeSession";
 import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
+import { useLanguage } from "@/app/contexts/LanguageContext";
 
 // Agent configs
 import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
@@ -31,7 +32,7 @@ import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
 // Map used by connect logic for scenarios defined via the SDK.
 const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   simpleHandoff: simpleHandoffScenario,
-  customerServiceRetail: customerServiceRetailScenario,
+  SingleInterface: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
 };
 
@@ -40,22 +41,6 @@ import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 
 function App() {
   const searchParams = useSearchParams()!;
-
-  // ---------------------------------------------------------------------
-  // Codec selector – lets you toggle between wide-band Opus (48 kHz)
-  // and narrow-band PCMU/PCMA (8 kHz) to hear what the agent sounds like on
-  // a traditional phone line and to validate ASR / VAD behaviour under that
-  // constraint.
-  //
-  // We read the `?codec=` query-param and rely on the `changePeerConnection`
-  // hook (configured in `useRealtimeSession`) to set the preferred codec
-  // before the offer/answer negotiation.
-  // ---------------------------------------------------------------------
-  const urlCodec = searchParams.get("codec") || "opus";
-
-  // Agents SDK doesn't currently support codec selection so it is now forced 
-  // via global codecPatch at module load 
-
   const {
     addTranscriptMessage,
     addTranscriptBreadcrumb,
@@ -87,23 +72,81 @@ function App() {
     }
   }, [sdkAudioElement]);
 
+  // Add auto-disconnect timer state
+  const [lastUserActivity, setLastUserActivity] = useState<number>(Date.now());
+  const [autoDisconnectTimer, setAutoDisconnectTimer] = useState<NodeJS.Timeout | null>(null);
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus>("DISCONNECTED");
+  const AUTO_DISCONNECT_TIMEOUT = 30000; // 30 seconds
+
+  const { preferredLanguage, setPreferredLanguage } = useLanguage();
+
+  // Codec selector – lets you toggle between wide-band Opus (48 kHz)
+  // and narrow-band PCMU/PCMA (8 kHz) to hear what the agent sounds like on
+  // a traditional phone line and to validate ASR / VAD behaviour under that
+  // constraint.
+  const urlCodec = searchParams.get("codec") || "opus";
+
   const {
     connect,
     disconnect,
-    sendUserText,
+    status,
     sendEvent,
-    interrupt,
+    sendUserText,
     mute,
+    interrupt,
+    pushToTalkStart,
+    pushToTalkStop,
   } = useRealtimeSession({
-    onConnectionChange: (s) => setSessionStatus(s as SessionStatus),
+    onConnectionChange: (status) => {
+      setSessionStatus(status);
+      if (status === "DISCONNECTED") {
+        clearAutoDisconnectTimer();
+      } else if (status === "CONNECTED") {
+        refreshUserActivity(); // Start timer when connected
+      }
+    },
     onAgentHandoff: (agentName: string) => {
       handoffTriggeredRef.current = true;
       setSelectedAgentName(agentName);
     },
   });
 
-  const [sessionStatus, setSessionStatus] =
-    useState<SessionStatus>("DISCONNECTED");
+  // Auto-disconnect timer functions with proper cleanup
+  const clearAutoDisconnectTimer = useCallback(() => {
+    if (autoDisconnectTimer) {
+      clearTimeout(autoDisconnectTimer);
+      setAutoDisconnectTimer(null);
+    }
+  }, [autoDisconnectTimer]);
+
+  const refreshUserActivity = useCallback(() => {
+    setLastUserActivity(Date.now());
+    clearAutoDisconnectTimer();
+    
+    // Start new timer only if connected
+    if (sessionStatus === "CONNECTED") {
+      const timer = setTimeout(() => {
+        console.log('Auto-disconnecting due to inactivity');
+        disconnect();
+      }, AUTO_DISCONNECT_TIMEOUT);
+      
+      setAutoDisconnectTimer(timer);
+    }
+  }, [clearAutoDisconnectTimer, disconnect, AUTO_DISCONNECT_TIMEOUT, sessionStatus]);
+
+  // Cleanup timer on component unmount or status change
+  useEffect(() => {
+    return () => {
+      clearAutoDisconnectTimer();
+    };
+  }, [clearAutoDisconnectTimer]);
+
+  // Clear timer when disconnected
+  useEffect(() => {
+    if (sessionStatus === "DISCONNECTED") {
+      clearAutoDisconnectTimer();
+    }
+  }, [sessionStatus, clearAutoDisconnectTimer]);
 
   const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
     useState<boolean>(true);
@@ -150,11 +193,12 @@ function App() {
     setSelectedAgentConfigSet(agents);
   }, [searchParams]);
 
-  useEffect(() => {
-    if (selectedAgentName && sessionStatus === "DISCONNECTED") {
-      connectToRealtime();
-    }
-  }, [selectedAgentName]);
+  // REMOVED: Auto-connect logic for manual connect mode
+  // Users must now manually press Connect button
+
+  // REMOVED: Problematic auto-disconnect on language change
+  // In manual mode, users control their own connections
+  // Language preference is passed via extraContext when connecting
 
   useEffect(() => {
     if (
@@ -212,7 +256,7 @@ function App() {
           reorderedAgents.unshift(agent);
         }
 
-        const companyName = agentSetKey === 'customerServiceRetail'
+        const companyName = agentSetKey === 'SingleInterface'
           ? customerServiceRetailCompanyName
           : chatSupervisorCompanyName;
         const guardrail = createModerationGuardrail(companyName);
@@ -224,8 +268,11 @@ function App() {
           outputGuardrails: [guardrail],
           extraContext: {
             addTranscriptBreadcrumb,
+            preferredLanguage: preferredLanguage,
           },
         });
+        
+        console.log(`[DEBUG] Connected with language preference: ${preferredLanguage}`);
       } catch (err) {
         console.error("Error connecting via SDK:", err);
         setSessionStatus("DISCONNECTED");
@@ -236,13 +283,14 @@ function App() {
 
   const disconnectFromRealtime = () => {
     disconnect();
-    setSessionStatus("DISCONNECTED");
     setIsPTTUserSpeaking(false);
+    clearAutoDisconnectTimer();
   };
 
-  const sendSimulatedUserMessage = (text: string) => {
+  const sendSimulatedUserMessage = async (text: string) => {
+    refreshUserActivity(); // Track user activity
     const id = uuidv4().slice(0, 32);
-    addTranscriptMessage(id, "user", text, true);
+    await addTranscriptMessage(id, "user", text, true);
 
     sendClientEvent({
       type: 'conversation.item.create',
@@ -279,13 +327,14 @@ function App() {
 
     // Send an initial 'hi' message to trigger the agent to greet the user
     if (shouldTriggerResponse) {
-      sendSimulatedUserMessage('hi');
+      // Call without await since updateSession is not async
+      sendSimulatedUserMessage('hi').catch(console.error);
     }
-    return;
-  }
+  };
 
   const handleSendTextMessage = () => {
     if (!userText.trim()) return;
+    refreshUserActivity(); // Track user activity
     interrupt();
 
     try {
@@ -299,6 +348,7 @@ function App() {
 
   const handleTalkButtonDown = () => {
     if (sessionStatus !== 'CONNECTED') return;
+    refreshUserActivity(); // Track user activity for push-to-talk
     interrupt();
 
     setIsPTTUserSpeaking(true);
@@ -319,7 +369,6 @@ function App() {
   const onToggleConnection = () => {
     if (sessionStatus === "CONNECTED" || sessionStatus === "CONNECTING") {
       disconnectFromRealtime();
-      setSessionStatus("DISCONNECTED");
     } else {
       connectToRealtime();
     }
@@ -336,11 +385,12 @@ function App() {
     e: React.ChangeEvent<HTMLSelectElement>
   ) => {
     const newAgentName = e.target.value;
-    // Reconnect session with the newly selected agent as root so that tool
-    // execution works correctly.
-    disconnectFromRealtime();
+    // Disconnect current session when changing agents
+    // User will need to manually reconnect with the new agent
+    if (sessionStatus === "CONNECTED" || sessionStatus === "CONNECTING") {
+      disconnectFromRealtime();
+    }
     setSelectedAgentName(newAgentName);
-    // connectToRealtime will be triggered by effect watching selectedAgentName
   };
 
   // Because we need a new connection, refresh the page when codec changes
@@ -454,6 +504,28 @@ function App() {
         </div>
         <div className="flex items-center">
           <label className="flex items-center text-base gap-1 mr-2 font-medium">
+            Language
+          </label>
+          <div className="relative inline-block">
+            <select
+              value={preferredLanguage}
+              onChange={(e) => setPreferredLanguage(e.target.value)}
+              className="appearance-none border border-gray-300 rounded-lg text-base px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none"
+            >
+              <option value="English">English</option>
+              <option value="Hindi">Hindi</option>
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-gray-600">
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 10.44l3.71-3.21a.75.75 0 111.04 1.08l-4.25 3.65a.75.75 0 01-1.04 0L5.21 8.27a.75.75 0 01.02-1.06z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+          </div>
+          <label className="flex items-center text-base gap-1 ml-6 mr-2 font-medium">
             Scenario
           </label>
           <div className="relative inline-block">
