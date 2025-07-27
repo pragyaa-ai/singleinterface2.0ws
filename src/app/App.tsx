@@ -7,7 +7,7 @@ import Image from "next/image";
 
 // UI components
 import Transcript from "./components/Transcript";
-import Events from "./components/Events";
+import AgentVisualizer from "./components/AgentVisualizer";
 import BottomToolbar from "./components/BottomToolbar";
 
 // Types
@@ -195,6 +195,20 @@ function App() {
 
   // REMOVED: Auto-connect logic for manual connect mode
   // Users must now manually press Connect button
+
+  // Auto-reconnect when language changes (only if already connected)
+  useEffect(() => {
+    console.log(`[DEBUG] Language preference changed to: ${preferredLanguage}, current session status: ${sessionStatus}`);
+    if (sessionStatus === "CONNECTED") {
+      console.log(`Language changed to: ${preferredLanguage}, reconnecting to update agent context...`);
+      // Reconnect to send updated language preference to agent
+      disconnectFromRealtime();
+      // Small delay to ensure clean disconnect before reconnecting
+      setTimeout(() => {
+        connectToRealtime();
+      }, 100);
+    }
+  }, [preferredLanguage]);
 
   // REMOVED: Problematic auto-disconnect on language change
   // In manual mode, users control their own connections
@@ -598,7 +612,7 @@ function App() {
           }
         />
 
-        <Events isExpanded={isEventsPaneExpanded} />
+        <AgentVisualizer isExpanded={isEventsPaneExpanded} />
       </div>
 
       <BottomToolbar

@@ -130,15 +130,8 @@ async function correctTextScript(text: string, targetLanguage: string): Promise<
 export const TranscriptProvider: FC<PropsWithChildren> = ({ children }) => {
   const [transcriptItems, setTranscriptItems] = useState<TranscriptItem[]>([]);
   
-  // Defensive language context usage to prevent provider timing issues
-  let preferredLanguage = 'English'; // Default fallback
-  try {
-    const languageContext = useLanguage();
-    preferredLanguage = languageContext.preferredLanguage;
-  } catch (error) {
-    console.warn('[TranscriptProvider] LanguageProvider not ready, using default language:', error);
-    // Continue with default language to prevent crashes and API waste
-  }
+  // Use language context properly - hooks must be called consistently
+  const { preferredLanguage } = useLanguage();
 
   function newTimestampPretty(): string {
     const now = new Date();
