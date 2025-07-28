@@ -1,3 +1,4 @@
+import "./init-polyfills"; // Must be the first import
 import type { Metadata } from "next";
 import "./globals.css";
 import "./lib/envSetup";
