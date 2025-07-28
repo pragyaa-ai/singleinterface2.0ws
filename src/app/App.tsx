@@ -460,15 +460,15 @@ function App() {
         >
           <div>
             <Image
-              src="/openai-logomark.svg"
-              alt="OpenAI Logo"
-              width={20}
-              height={20}
+              src="/pragyaa-logo.png"
+              alt="Pragyaa Logo"
+              width={28}
+              height={28}
               className="mr-2"
             />
           </div>
           <div>
-            Realtime API <span className="text-gray-500">Agents</span>
+            VoiceAgent 2.0 <span className="text-gray-500"></span>
           </div>
         </div>
         <div className="flex items-center">
