@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
 import { OpenAI } from 'openai';
 
-console.log('--- SESSION API ROUTE ---');
-console.log(
-  'Checking for OPENAI_API_KEY:',
-  process.env.OPENAI_API_KEY
-    ? `Exists (ends with ...${process.env.OPENAI_API_KEY.slice(-4)})`
-    : '!!! NOT FOUND !!!',
-);
+const openai = new OpenAI();
 
-export async function GET() {
+export async function POST(req: Request) {
   try {
     const response = await fetch(
       "https://api.openai.com/v1/realtime/sessions",
