@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { streamResponse } from 'openai-realtime';
+import { OpenAI } from 'openai';
 
 console.log('--- SESSION API ROUTE ---');
 console.log(
