@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { OpenAI } from 'openai';
-
-const openai = new OpenAI();
 
 export async function POST(req: Request) {
   try {
+    const { agentId, extraContext } = await req.json();
+
     const response = await fetch(
       "https://api.openai.com/v1/realtime/sessions",
       {
@@ -14,7 +13,8 @@ export async function POST(req: Request) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-realtime-preview-2025-06-03",
+          agent_id: agentId,
+          extra_context: extraContext,
         }),
       }
     );
