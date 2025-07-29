@@ -6,6 +6,11 @@ import "./lib/envSetup";
 export const metadata: Metadata = {
   title: "SingleInterface Voice Agent",
   description: "Advanced voice agents with multilingual support.",
+  icons: {
+    icon: '/pragyaa-logo.svg',
+    shortcut: '/pragyaa-logo.svg',
+    apple: '/pragyaa-logo.svg',
+  },
 };
 
 // This is the raw JavaScript for the polyfill.
