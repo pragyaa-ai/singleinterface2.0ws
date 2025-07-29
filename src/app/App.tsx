@@ -462,10 +462,10 @@ function App() {
             <Image
               src="/pragyaa-logo.svg"
               alt="Pragyaa Logo"
-              width={28}
+              width={80}
               height={0} // Set height to 0 and allow style to control it
               style={{ height: 'auto' }} // This maintains the aspect ratio
-              className="mr-2"
+              className="mr-3"
             />
           </div>
           <div>
