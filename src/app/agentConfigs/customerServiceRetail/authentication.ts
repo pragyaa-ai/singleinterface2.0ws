@@ -226,9 +226,18 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
   }
 ]
 
+# Audio Upload Instructions
+- When you receive a transcript that begins with "AUDIO_UPLOAD_TRANSCRIPT:", your behavior must change.
+- The user is NOT on a live call. Do NOT ask for confirmation of the data you extract.
+- Your task is to analyze the entire transcript and extract all available data points in a single pass.
+- Use the \`capture_all_store_data\` tool to save all extracted information at once.
+- For any data points that you cannot find in the transcript, you MUST pass "Not Available" as the value for that field in the \`capture_all_store_data\` tool.
+- After calling the tool, inform the user that the data has been processed and use the \`disconnect_session\` tool to end the session.
+- Do not ask for any further information or continue the conversation.
+
 # Data Collection Instructions
 - **CRITICAL**: You have access to data capture tools that automatically save store information to the system.
-- **ALWAYS** use the \`capture_store_data\` tool immediately when a customer provides any of these data points:
+- **ALWAYS** use the \`capture_store_data\` tool immediately when a customer provides any of these data points in a LIVE conversation:
   - Store ID/Code: Use data_type "store_id"
   - Address Line 1: Use data_type "address_line_1"
   - Locality: Use data_type "locality"
@@ -247,7 +256,7 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
   - Payment Methods Accepted: Use data_type "payment_methods"
   - Alternate Number: Use data_type "alternate_number"
 
-## CONFIRMATION PROTOCOL (MANDATORY):
+## CONFIRMATION PROTOCOL (MANDATORY FOR LIVE CONVERSATIONS):
 - **STEP 1**: IMMEDIATELY capture the data using \`capture_store_data\` tool
 - **STEP 2**: IMMEDIATELY repeat back the captured information to the customer for confirmation
 - **STEP 3**: Wait for explicit confirmation before proceeding to next topic
@@ -271,6 +280,75 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
 `,
 
   tools: [
+    tool({
+      name: "capture_all_store_data",
+      description: "Capture all available store verification data from an uploaded audio transcript in a single call. Use this tool ONLY for uploaded audio files.",
+      parameters: {
+        type: "object",
+        properties: {
+          store_id: { type: "string", description: "Store ID/Code" },
+          address_line_1: { type: "string", description: "Address Line 1" },
+          locality: { type: "string", description: "Locality" },
+          landmark: { type: "string", description: "Landmark" },
+          city: { type: "string", description: "City" },
+          state: { type: "string", description: "State" },
+          pin_code: { type: "string", description: "PIN Code" },
+          business_hours: { type: "string", description: "Business Hours" },
+          weekly_off: { type: "string", description: "Weekly Off" },
+          main_phone_std: { type: "string", description: "Main Phone Number with STD" },
+          manager_number: { type: "string", description: "Store Manager's Number" },
+          store_email: { type: "string", description: "Store Email ID" },
+          manager_email: { type: "string", description: "Store Manager's Email ID" },
+          designation: { type: "string", description: "Designation of Person" },
+          parking_options: { type: "string", description: "Parking Options" },
+          payment_methods: { type: "string", description: "Payment Methods Accepted" },
+          alternate_number: { type: "string", description: "Alternate Number" },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+      execute: async (input, details) => {
+        const context = details?.context as any;
+        if (context?.captureDataPoint) {
+          for (const [key, value] of Object.entries(input)) {
+            if (value) {
+              context.captureDataPoint(key, value, 'verified');
+              console.log(`[Agent Bulk Data Capture] ${key}: ${value}`);
+            }
+          }
+          return { success: true, message: "Successfully captured all available data." };
+        } else {
+          console.warn('[Agent Bulk Data Capture] Data collection context not available');
+          return { success: false, message: "Data collection context not available" };
+        }
+      },
+    }),
+    tool({
+      name: "disconnect_session",
+      description: "Disconnect the current session. Use this tool ONLY after processing uploaded audio files.",
+      parameters: {
+        type: "object",
+        properties: {
+          reason: {
+            type: "string",
+            description: "Reason for disconnection"
+          }
+        },
+        required: ["reason"],
+        additionalProperties: false,
+      },
+      execute: async (input, details) => {
+        const context = details?.context as any;
+        if (context?.disconnectSession) {
+          context.disconnectSession();
+          console.log(`[Agent Disconnect] ${input.reason}`);
+          return { success: true, message: "Session disconnected successfully." };
+        } else {
+          console.warn('[Agent Disconnect] Disconnect function not available');
+          return { success: false, message: "Disconnect function not available" };
+        }
+      },
+    }),
     tool({
       name: "capture_store_data",
       description: "Capture store verification data points during the conversation. Use this whenever the customer provides store-related information.",
@@ -328,7 +406,7 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
             enum: ["store_id", "address_line_1", "locality", "landmark", "city", "state", "pin_code", "business_hours", "weekly_off", "main_phone_std", "manager_number", "store_email", "manager_email", "designation", "parking_options", "payment_methods", "alternate_number"],
             description: "The type of data being verified"
           },
-          confirmed_value: {
+          confirmed__value: {
             type: "string",
             description: "The value confirmed by the customer"
           }

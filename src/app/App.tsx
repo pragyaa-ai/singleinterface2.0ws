@@ -238,6 +238,7 @@ function App() {
             addTranscriptBreadcrumb,
             preferredLanguage: preferredLanguage,
             captureDataPoint,
+            disconnectSession: disconnectFromRealtime,
           },
         });
         
@@ -451,6 +452,66 @@ function App() {
 
   const agentSetKey = searchParams.get("agentConfig") || "default";
 
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+
+    const id = uuidv4().slice(0, 32);
+    await addTranscriptMessage(id, "user", `Uploading and transcribing ${file.name}...`, false);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to transcribe audio");
+      }
+
+      const data = await response.json();
+      const transcribedText = data.transcription;
+
+      await addTranscriptMessage(id, "user", transcribedText, true);
+      sendUserText(`AUDIO_UPLOAD_TRANSCRIPT: ${transcribedText}`);
+    } catch (error) {
+      console.error("Error uploading or transcribing file:", error);
+      await addTranscriptMessage(id, "user", `Error: Could not process ${file.name}`, true);
+    }
+  };
+
+  const handleUrlUpload = async (url: string) => {
+    if (!url) return;
+
+    const id = uuidv4().slice(0, 32);
+    await addTranscriptMessage(id, "user", `Downloading and transcribing audio from URL...`, false);
+
+    try {
+      const response = await fetch("/api/transcribe-url", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to transcribe audio from URL");
+      }
+
+      const data = await response.json();
+      const transcribedText = data.transcription;
+
+      await addTranscriptMessage(id, "user", transcribedText, true);
+      sendUserText(`AUDIO_UPLOAD_TRANSCRIPT: ${transcribedText}`);
+    } catch (error) {
+      console.error("Error downloading or transcribing URL:", error);
+      await addTranscriptMessage(id, "user", `Error: Could not process audio from URL`, true);
+    }
+  };
+
   return (
     <div className="text-base flex flex-col h-screen bg-gray-100 text-gray-800 relative">
       <div className="p-5 text-lg font-semibold flex justify-between items-center bg-white shadow-md py-3">
@@ -587,6 +648,8 @@ function App() {
         setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
         codec={urlCodec}
         onCodecChange={handleCodecChange}
+        onFileUpload={handleFileUpload}
+        onUrlUpload={handleUrlUpload}
       />
     </div>
   );

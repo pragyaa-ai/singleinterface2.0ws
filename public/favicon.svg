@@ -1,0 +1,11 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Simplified Pragyaa logo for favicon - just the interlocking circles -->
+  <g transform="translate(50, 50)">
+    <!-- Cyan circle -->
+    <circle cx="-12" cy="-8" r="20" fill="none" stroke="#00B4D8" stroke-width="6"/>
+    <!-- Yellow circle -->
+    <circle cx="12" cy="-8" r="20" fill="none" stroke="#FFB700" stroke-width="6"/>
+    <!-- Magenta circle -->
+    <circle cx="0" cy="12" r="20" fill="none" stroke="#E91E63" stroke-width="6"/>
+  </g>
+</svg>

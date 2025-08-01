@@ -28,6 +28,8 @@ interface BottomToolbarProps {
   setIsAudioPlaybackEnabled: (val: boolean) => void;
   codec: string;
   onCodecChange: (newCodec: string) => void;
+  onFileUpload: (file: File) => void;
+  onUrlUpload: (url: string) => void;
 }
 
 function BottomToolbar({
@@ -44,9 +46,31 @@ function BottomToolbar({
   setIsAudioPlaybackEnabled,
   codec,
   onCodecChange,
+  onFileUpload,
+  onUrlUpload,
 }: BottomToolbarProps) {
   const isConnected = sessionStatus === "CONNECTED";
   const isConnecting = sessionStatus === "CONNECTING";
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [audioUrl, setAudioUrl] = React.useState<string>("");
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      onFileUpload(file);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleUrlUpload = () => {
+    if (audioUrl.trim()) {
+      onUrlUpload(audioUrl.trim());
+      setAudioUrl("");
+    }
+  };
 
   const handleCodecChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newCodec = e.target.value;
@@ -80,6 +104,39 @@ function BottomToolbar({
       >
         {getConnectionButtonLabel()}
       </button>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        accept="audio/*"
+      />
+      <button
+        onClick={handleUploadClick}
+        className={`bg-blue-600 hover:bg-blue-700 text-white text-base p-2 w-36 rounded-md h-full ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+        disabled={!isConnected}
+      >
+        Upload Audio
+      </button>
+
+      <div className="flex flex-row items-center gap-2">
+        <input
+          type="url"
+          value={audioUrl}
+          onChange={(e) => setAudioUrl(e.target.value)}
+          placeholder="Enter audio URL..."
+          className={`border border-gray-300 rounded-md px-2 py-1 text-base w-64 focus:outline-none ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={!isConnected}
+        />
+        <button
+          onClick={handleUrlUpload}
+          className={`bg-green-600 hover:bg-green-700 text-white text-base p-2 w-32 rounded-md h-full ${!isConnected || !audioUrl.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={!isConnected || !audioUrl.trim()}
+        >
+          Process URL
+        </button>
+      </div>
 
       <div className="flex flex-row items-center gap-2">
         <input
@@ -166,5 +223,6 @@ function BottomToolbar({
     </div>
   );
 }
+
 
 export default BottomToolbar;

@@ -4,12 +4,29 @@ import "./lib/envSetup";
 // The polyfill import is removed as we are injecting the script directly.
 
 export const metadata: Metadata = {
-  title: "SingleInterface Voice Agent",
-  description: "Advanced voice agents with multilingual support.",
+  title: "Pragyaa.ai - SingleInterface Voice Agent",
+  description: "Enterprise AI voice agents with multilingual support - simplified.",
   icons: {
-    icon: '/pragyaa-logo.svg',
-    shortcut: '/pragyaa-logo.svg',
+    icon: [
+      {
+        url: '/favicon.svg',
+        type: 'image/svg+xml',
+      },
+      {
+        url: '/favicon.ico',
+        sizes: '32x32',
+        type: 'image/x-icon',
+      }
+    ],
+    shortcut: '/favicon.svg',
     apple: '/pragyaa-logo.svg',
+    other: [
+      {
+        rel: 'icon',
+        type: 'image/svg+xml',
+        url: '/pragyaa-logo.svg',
+      }
+    ]
   },
 };
 
