@@ -17,7 +17,9 @@ import {
   GlobeAltIcon,
   BuildingOfficeIcon,
   CreditCardIcon,
-  TruckIcon
+  TruckIcon,
+  WrenchScrewdriverIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/solid';
 import { useDataCollection } from '../contexts/DataCollectionContext';
 import { useSalesData } from '../contexts/SalesDataContext';
@@ -48,6 +50,7 @@ const AgentVisualizer = ({
 
   // Determine if we're showing sales data (spotlight agent) or store data (authentication)
   const isSpotlightAgent = currentAgentName === 'spotlight';
+  const isCarDealerAgent = currentAgentName === 'carDealer';
   const dataToShow = isSpotlightAgent ? salesData : capturedData;
   const completionPercentage = isSpotlightAgent 
     ? getSalesDataProgress().percentage 
@@ -93,6 +96,25 @@ const AgentVisualizer = ({
   const downloadData = () => {
     if (isSpotlightAgent) {
       downloadSalesData('json');
+    } else if (isCarDealerAgent) {
+      // For car dealer, download consultation summary
+      const consultationData = {
+        agent: 'Car Dealer',
+        timestamp: new Date().toISOString(),
+        sessionDuration: callDuration,
+        status: 'Active Consultation',
+        customerInteraction: 'Automotive consultation in progress'
+      };
+      const dataStr = JSON.stringify(consultationData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `consultation-summary-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } else {
       const collectedData = exportData();
       const dataStr = JSON.stringify(collectedData, null, 2);
@@ -142,6 +164,10 @@ const AgentVisualizer = ({
     name: 'Spotlight',
     description: 'Collecting automotive sales lead data.',
     status: 'Active',
+  } : isCarDealerAgent ? {
+    name: 'Car Dealer',
+    description: 'Specialized automotive consultation and sales.',
+    status: 'Active',
   } : {
     name: 'Authentication',
     description: 'Collecting store verification data.',
@@ -152,6 +178,12 @@ const AgentVisualizer = ({
   const handoffAgents = isSpotlightAgent ? [
     { name: 'Car Dealer' },
     { name: 'Human Agent' },
+  ] : isCarDealerAgent ? [
+    { name: 'Authentication' },
+    { name: 'Returns' },
+    { name: 'Sales' },
+    { name: 'Spotlight' },
+    { name: 'Human Agent' },
   ] : [
     { name: 'Returns' },
     { name: 'Sales' },
@@ -159,7 +191,10 @@ const AgentVisualizer = ({
   ];
 
   const totalDataPoints = isSpotlightAgent ? 3 : capturedData.length;
-  const metrics = [
+  const metrics = isCarDealerAgent ? [
+    { name: 'Consultation Mode', value: 'Active', icon: UserCircleIcon },
+    { name: 'Call Duration', value: callDuration, icon: ClockIcon },
+  ] : [
     { 
       name: 'Data Completion', 
       value: `${capturedCount}/${totalDataPoints} (${completionPercentage}%)`, 
@@ -210,68 +245,112 @@ const AgentVisualizer = ({
             </h3>
             <button
               onClick={downloadData}
-              disabled={capturedCount === 0}
+              disabled={isCarDealerAgent ? false : capturedCount === 0}
               className="flex items-center text-sm bg-green-500 text-white px-3 py-1 rounded-md hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
-              Download ({capturedCount})
+              {isCarDealerAgent ? 'Download Summary' : `Download (${capturedCount})`}
             </button>
           </div>
           
-          {/* Progress Bar */}
-          <div className="bg-gray-200 rounded-full h-2 mb-3">
-            <div 
-              className="bg-green-500 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${completionPercentage}%` }}
-            ></div>
-          </div>
+          {/* Progress Bar - only show for data collection agents */}
+          {!isCarDealerAgent && (
+            <div className="bg-gray-200 rounded-full h-2 mb-3">
+              <div 
+                className="bg-green-500 h-2 rounded-full transition-all duration-500"
+                style={{ width: `${completionPercentage}%` }}
+              ></div>
+            </div>
+          )}
           
           <div className="bg-white rounded-lg p-3 space-y-2 shadow-sm max-h-64 overflow-y-auto">
-            {dataToShow.map((dataPoint) => {
-              const IconComponent = getDataPointIcon(dataPoint.id);
-              const displayName = isSpotlightAgent ? dataPoint.label : dataPoint.name;
-              
-              return (
-                <div key={dataPoint.id} className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2 last:border-b-0">
+            {isCarDealerAgent ? (
+              // Car Dealer Capabilities Display
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2">
                   <div className="flex items-center">
-                    <IconComponent className={`h-5 w-5 mr-3 ${
-                      dataPoint.status === 'captured' || dataPoint.status === 'verified' 
-                        ? 'text-green-500' 
-                        : dataPoint.status === 'not_available'
-                        ? 'text-orange-500'
-                        : 'text-gray-400'
-                    }`} />
-                    <span className="text-sm font-medium">{displayName}</span>
+                    <TruckIcon className="h-5 w-5 mr-3 text-blue-500" />
+                    <span className="text-sm font-medium">Vehicle Information</span>
                   </div>
-                  <div className="flex items-center">
-                    {dataPoint.value ? (
-                      <div className="text-right">
-                        <span className="text-sm text-gray-800 font-medium">{dataPoint.value}</span>
-                        {dataPoint.timestamp && (
-                          <p className="text-xs text-gray-500">
-                            {isSpotlightAgent 
-                              ? new Date(dataPoint.timestamp).toLocaleTimeString()
-                              : dataPoint.timestamp.toLocaleTimeString()
-                            }
-                          </p>
-                        )}
-                      </div>
-                    ) : dataPoint.status === 'not_available' ? (
-                      <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                        Not Available
-                      </span>
-                    ) : (
-                      <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                        Pending
-                      </span>
-                    )}
-                    {(dataPoint.status === 'captured' || dataPoint.status === 'verified') && (
-                      <CheckCircleIcon className="h-4 w-4 ml-2 text-green-500" />
-                    )}
-                  </div>
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Available</span>
                 </div>
-              );
-            })}
+                <div className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2">
+                  <div className="flex items-center">
+                    <CreditCardIcon className="h-5 w-5 mr-3 text-purple-500" />
+                    <span className="text-sm font-medium">Financing Options</span>
+                  </div>
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Available</span>
+                </div>
+                <div className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2">
+                  <div className="flex items-center">
+                    <CalendarIcon className="h-5 w-5 mr-3 text-red-500" />
+                    <span className="text-sm font-medium">Test Drive Scheduling</span>
+                  </div>
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Available</span>
+                </div>
+                <div className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2">
+                  <div className="flex items-center">
+                    <WrenchScrewdriverIcon className="h-5 w-5 mr-3 text-orange-500" />
+                    <span className="text-sm font-medium">Service & Warranty</span>
+                  </div>
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Available</span>
+                </div>
+                <div className="flex items-center justify-between text-gray-600">
+                  <div className="flex items-center">
+                    <ChatBubbleLeftRightIcon className="h-5 w-5 mr-3 text-indigo-500" />
+                    <span className="text-sm font-medium">Brand Expertise</span>
+                  </div>
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Specialized</span>
+                </div>
+              </div>
+            ) : (
+              // Data Collection Display (Spotlight and Authentication agents)
+              dataToShow.map((dataPoint) => {
+                const IconComponent = getDataPointIcon(dataPoint.id);
+                const displayName = isSpotlightAgent ? dataPoint.label : dataPoint.name;
+                
+                return (
+                  <div key={dataPoint.id} className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2 last:border-b-0">
+                    <div className="flex items-center">
+                      <IconComponent className={`h-5 w-5 mr-3 ${
+                        dataPoint.status === 'captured' || dataPoint.status === 'verified' 
+                          ? 'text-green-500' 
+                          : dataPoint.status === 'not_available'
+                          ? 'text-orange-500'
+                          : 'text-gray-400'
+                      }`} />
+                      <span className="text-sm font-medium">{displayName}</span>
+                    </div>
+                    <div className="flex items-center">
+                      {dataPoint.value ? (
+                        <div className="text-right">
+                          <span className="text-sm text-gray-800 font-medium">{dataPoint.value}</span>
+                          {dataPoint.timestamp && (
+                            <p className="text-xs text-gray-500">
+                              {isSpotlightAgent 
+                                ? new Date(dataPoint.timestamp).toLocaleTimeString()
+                                : dataPoint.timestamp.toLocaleTimeString()
+                              }
+                            </p>
+                          )}
+                        </div>
+                      ) : dataPoint.status === 'not_available' ? (
+                        <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                          Not Available
+                        </span>
+                      ) : (
+                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                          Pending
+                        </span>
+                      )}
+                      {(dataPoint.status === 'captured' || dataPoint.status === 'verified') && (
+                        <CheckCircleIcon className="h-4 w-4 ml-2 text-green-500" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 

@@ -17,3 +17,77 @@
  ✓ Compiled in 230ms (811 modules)
  ✓ Compiled / in 157ms (1009 modules)
  GET / 200 in 488ms
+ ✓ Compiled in 321ms (1820 modules)
+ ✓ Compiled in 512ms (1820 modules)
+ GET /?agentConfig=SingleInterface 200 in 429ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 760ms (1810 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 866ms
+ ✓ Compiled /api/session in 438ms (1829 modules)
+ GET /api/session 200 in 1007ms
+ ○ Compiling /api/responses ...
+ ✓ Compiled /api/responses in 953ms (1956 modules)
+ POST /api/responses 200 in 3193ms
+ POST /api/responses 200 in 2604ms
+ POST /api/responses 200 in 1932ms
+ POST /api/responses 200 in 2089ms
+ POST /api/responses 200 in 1952ms
+ POST /api/responses 200 in 3452ms
+ POST /api/responses 200 in 1420ms
+ POST /api/responses 200 in 1924ms
+ POST /api/responses 200 in 1796ms
+ POST /api/responses 200 in 2133ms
+ POST /api/responses 200 in 1865ms
+ POST /api/responses 200 in 1984ms
+ POST /api/responses 200 in 1919ms
+ POST /api/responses 200 in 1950ms
+ POST /api/responses 200 in 2074ms
+ POST /api/responses 200 in 1695ms
+ POST /api/responses 200 in 2945ms
+ POST /api/responses 200 in 1458ms
+ POST /api/responses 200 in 2405ms
+ POST /api/responses 200 in 2074ms
+ POST /api/responses 200 in 2139ms
+ POST /api/responses 200 in 2174ms
+ POST /api/responses 200 in 3189ms
+ POST /api/responses 200 in 2410ms
+ POST /api/responses 200 in 3623ms
+ POST /api/responses 200 in 3228ms
+ POST /api/responses 200 in 3193ms
+ POST /api/responses 200 in 3501ms
+ POST /api/responses 200 in 2772ms
+ POST /api/responses 200 in 2385ms
+ POST /api/responses 200 in 3380ms
+ POST /api/responses 200 in 7362ms
+ POST /api/responses 200 in 2142ms
+ POST /api/responses 200 in 4636ms
+ POST /api/responses 200 in 4164ms
+ POST /api/responses 200 in 2504ms
+ POST /api/responses 200 in 2795ms
+ POST /api/responses 200 in 2126ms
+ POST /api/responses 200 in 3869ms
+ ✓ Compiled in 2s (1821 modules)
+ GET /?agentConfig=SingleInterface 200 in 237ms
+ ✓ Compiled in 560ms (1821 modules)
+ GET /?agentConfig=SingleInterface 200 in 90ms
+ ✓ Compiled in 641ms (1821 modules)
+ GET /?agentConfig=SingleInterface 200 in 132ms
+ ✓ Compiled in 413ms (1821 modules)
+ GET /?agentConfig=SingleInterface 200 in 68ms
+ ✓ Compiled in 676ms (1821 modules)
+ GET /?agentConfig=SingleInterface 200 in 73ms
+ ✓ Compiled in 1168ms (1821 modules)
+ GET /?agentConfig=SingleInterface 200 in 86ms
+ ✓ Compiled in 2.4s (1825 modules)
+ GET /?agentConfig=SingleInterface 200 in 320ms
+ ✓ Compiled in 1001ms (1825 modules)
+ GET /?agentConfig=SingleInterface 200 in 105ms
+ ✓ Compiled in 1444ms (1825 modules)
+ GET /?agentConfig=SingleInterface 200 in 259ms
+ ✓ Compiled in 1456ms (1825 modules)
+ GET /?agentConfig=SingleInterface 200 in 129ms
+ ✓ Compiled in 944ms (1825 modules)
+ GET /?agentConfig=SingleInterface 200 in 89ms
+ ✓ Compiled in 2.2s (1825 modules)
+ GET /?agentConfig=SingleInterface 200 in 95ms
+ GET / 200 in 490ms
