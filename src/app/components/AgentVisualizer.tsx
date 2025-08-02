@@ -20,8 +20,15 @@ import {
   TruckIcon
 } from '@heroicons/react/24/solid';
 import { useDataCollection } from '../contexts/DataCollectionContext';
+import { useSalesData } from '../contexts/SalesDataContext';
 
-const AgentVisualizer = ({ isExpanded }: { isExpanded: boolean }) => {
+const AgentVisualizer = ({ 
+  isExpanded, 
+  currentAgentName 
+}: { 
+  isExpanded: boolean;
+  currentAgentName?: string;
+}) => {
   const { 
     capturedData, 
     getCompletionPercentage, 
@@ -29,33 +36,51 @@ const AgentVisualizer = ({ isExpanded }: { isExpanded: boolean }) => {
     exportData,
     captureDataPoint // For demo purposes
   } = useDataCollection();
+  
+  const {
+    salesData,
+    getSalesDataProgress,
+    exportSalesData,
+    downloadSalesData
+  } = useSalesData();
+
+  // Determine if we're showing sales data (spotlight agent) or store data (authentication)
+  const isSpotlightAgent = currentAgentName === 'spotlight';
+  const dataToShow = isSpotlightAgent ? salesData : capturedData;
+  const completionPercentage = isSpotlightAgent 
+    ? getSalesDataProgress().percentage 
+    : getCompletionPercentage();
+  const capturedCount = isSpotlightAgent 
+    ? getSalesDataProgress().completed 
+    : getCapturedCount();
 
   if (!isExpanded) {
     return null;
   }
 
-  // Calculate completion percentage
-  const completionPercentage = getCompletionPercentage();
-  const capturedCount = getCapturedCount();
-
   // Download collected data as JSON
   const downloadData = () => {
-    const collectedData = exportData();
-    const dataStr = JSON.stringify(collectedData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `store-verification-data-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    if (isSpotlightAgent) {
+      downloadSalesData('json');
+    } else {
+      const collectedData = exportData();
+      const dataStr = JSON.stringify(collectedData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `store-verification-data-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   };
 
   // Icon mapping for data points
   const getDataPointIcon = (dataId: string) => {
     const iconMap: Record<string, React.ComponentType<any>> = {
+      // Store data icons (authentication agent)
       'store_id': IdentificationIcon,
       'address_line_1': HomeIcon,
       'locality': MapPinIcon,
@@ -73,12 +98,20 @@ const AgentVisualizer = ({ isExpanded }: { isExpanded: boolean }) => {
       'parking_options': TruckIcon,
       'payment_methods': CreditCardIcon,
       'alternate_number': PhoneIcon,
+      // Sales data icons (spotlight agent)
+      'full_name': UserCircleIcon,
+      'car_model': TruckIcon,
+      'email_id': EnvelopeIcon,
     };
     return iconMap[dataId] || ClipboardDocumentListIcon;
   };
 
-  // Static data
-  const currentAgent = {
+  // Dynamic agent data based on current agent
+  const currentAgent = isSpotlightAgent ? {
+    name: 'Spotlight',
+    description: 'Collecting automotive sales lead data.',
+    status: 'Active',
+  } : {
     name: 'Authentication',
     description: 'Collecting store verification data.',
     status: 'Active',
@@ -90,8 +123,13 @@ const AgentVisualizer = ({ isExpanded }: { isExpanded: boolean }) => {
     { name: 'Human Agent' },
   ];
 
+  const totalDataPoints = isSpotlightAgent ? 3 : capturedData.length;
   const metrics = [
-    { name: 'Data Completion', value: `${completionPercentage}%`, icon: ClipboardDocumentListIcon },
+    { 
+      name: 'Data Completion', 
+      value: `${capturedCount}/${totalDataPoints} (${completionPercentage}%)`, 
+      icon: ClipboardDocumentListIcon 
+    },
     { name: 'Call Duration', value: '2:34', icon: ClockIcon },
   ];
 
@@ -154,17 +192,21 @@ const AgentVisualizer = ({ isExpanded }: { isExpanded: boolean }) => {
           </div>
           
           <div className="bg-white rounded-lg p-3 space-y-2 shadow-sm max-h-64 overflow-y-auto">
-            {capturedData.map((dataPoint) => {
+            {dataToShow.map((dataPoint) => {
               const IconComponent = getDataPointIcon(dataPoint.id);
+              const displayName = isSpotlightAgent ? dataPoint.label : dataPoint.name;
+              
               return (
                 <div key={dataPoint.id} className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2 last:border-b-0">
                   <div className="flex items-center">
                     <IconComponent className={`h-5 w-5 mr-3 ${
                       dataPoint.status === 'captured' || dataPoint.status === 'verified' 
                         ? 'text-green-500' 
+                        : dataPoint.status === 'not_available'
+                        ? 'text-orange-500'
                         : 'text-gray-400'
                     }`} />
-                    <span className="text-sm font-medium">{dataPoint.name}</span>
+                    <span className="text-sm font-medium">{displayName}</span>
                   </div>
                   <div className="flex items-center">
                     {dataPoint.value ? (
@@ -172,10 +214,17 @@ const AgentVisualizer = ({ isExpanded }: { isExpanded: boolean }) => {
                         <span className="text-sm text-gray-800 font-medium">{dataPoint.value}</span>
                         {dataPoint.timestamp && (
                           <p className="text-xs text-gray-500">
-                            {dataPoint.timestamp.toLocaleTimeString()}
+                            {isSpotlightAgent 
+                              ? new Date(dataPoint.timestamp).toLocaleTimeString()
+                              : dataPoint.timestamp.toLocaleTimeString()
+                            }
                           </p>
                         )}
                       </div>
+                    ) : dataPoint.status === 'not_available' ? (
+                      <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                        Not Available
+                      </span>
                     ) : (
                       <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
                         Pending

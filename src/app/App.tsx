@@ -22,6 +22,7 @@ import { useRealtimeSession } from "./hooks/useRealtimeSession";
 import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 import { useDataCollection } from "./contexts/DataCollectionContext";
+import { useSalesData } from "./contexts/SalesDataContext";
 
 // Agent configs
 import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
@@ -79,6 +80,13 @@ function App() {
 
   const { preferredLanguage, setPreferredLanguage } = useLanguage();
   const { captureDataPoint } = useDataCollection();
+  const { 
+    captureSalesData, 
+    verifySalesData, 
+    captureAllSalesData, 
+    pushToLMS, 
+    downloadSalesData 
+  } = useSalesData();
 
   // Codec selector – lets you toggle between wide-band Opus (48 kHz)
   // and narrow-band PCMU/PCMA (8 kHz) to hear what the agent sounds like on
@@ -239,6 +247,12 @@ function App() {
             preferredLanguage: preferredLanguage,
             captureDataPoint,
             disconnectSession: disconnectFromRealtime,
+            // Sales data functions for Spotlight agent
+            captureSalesData,
+            verifySalesData,
+            captureAllSalesData,
+            pushToLMS,
+            downloadSalesData,
           },
         });
         
@@ -593,9 +607,7 @@ function App() {
                   onChange={handleSelectedAgentChange}
                   className="appearance-none border border-gray-300 rounded-lg text-base px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none"
                 >
-                  {selectedAgentConfigSet
-                    ?.filter((agent) => agent.name === 'authentication')
-                    .map((agent) => (
+                  {selectedAgentConfigSet?.map((agent) => (
                     <option key={agent.name} value={agent.name}>
                       {agent.name}
                     </option>
@@ -631,7 +643,7 @@ function App() {
           }
         />
 
-        <AgentVisualizer isExpanded={isEventsPaneExpanded} />
+        <AgentVisualizer isExpanded={isEventsPaneExpanded} currentAgentName={selectedAgentName} />
       </div>
 
       <BottomToolbar
