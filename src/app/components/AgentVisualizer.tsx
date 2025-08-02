@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   UserCircleIcon,
   ClipboardDocumentListIcon,
@@ -24,10 +24,12 @@ import { useSalesData } from '../contexts/SalesDataContext';
 
 const AgentVisualizer = ({ 
   isExpanded, 
-  currentAgentName 
+  currentAgentName,
+  sessionStatus 
 }: { 
   isExpanded: boolean;
   currentAgentName?: string;
+  sessionStatus?: string;
 }) => {
   const { 
     capturedData, 
@@ -53,6 +55,35 @@ const AgentVisualizer = ({
   const capturedCount = isSpotlightAgent 
     ? getSalesDataProgress().completed 
     : getCapturedCount();
+
+  // Call duration tracking
+  const [callDuration, setCallDuration] = useState('0:00');
+  const [startTime, setStartTime] = useState<Date | null>(null);
+
+  useEffect(() => {
+    if (sessionStatus === 'CONNECTED' && !startTime) {
+      setStartTime(new Date());
+    } else if (sessionStatus === 'DISCONNECTED') {
+      setStartTime(null);
+      setCallDuration('0:00');
+    }
+  }, [sessionStatus, startTime]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (startTime && sessionStatus === 'CONNECTED') {
+      interval = setInterval(() => {
+        const now = new Date();
+        const diffInSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+        const minutes = Math.floor(diffInSeconds / 60);
+        const seconds = diffInSeconds % 60;
+        setCallDuration(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [startTime, sessionStatus]);
 
   if (!isExpanded) {
     return null;
@@ -117,7 +148,11 @@ const AgentVisualizer = ({
     status: 'Active',
   };
 
-  const handoffAgents = [
+  // Dynamic handoff agents based on current agent
+  const handoffAgents = isSpotlightAgent ? [
+    { name: 'Car Dealer' },
+    { name: 'Human Agent' },
+  ] : [
     { name: 'Returns' },
     { name: 'Sales' },
     { name: 'Human Agent' },
@@ -130,7 +165,7 @@ const AgentVisualizer = ({
       value: `${capturedCount}/${totalDataPoints} (${completionPercentage}%)`, 
       icon: ClipboardDocumentListIcon 
     },
-    { name: 'Call Duration', value: '2:34', icon: ClockIcon },
+    { name: 'Call Duration', value: callDuration, icon: ClockIcon },
   ];
 
   return (

@@ -1,0 +1,19 @@
+
+> openai-realtime-agents@2.0.0 dev
+> next dev
+
+   ▲ Next.js 15.3.3
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.103:3000
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 1994ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.2s (1820 modules)
+ GET / 200 in 2647ms
+ ✓ Compiled in 175ms (811 modules)
+ ✓ Compiled in 983ms (1820 modules)
+ ✓ Compiled in 230ms (811 modules)
+ ✓ Compiled / in 157ms (1009 modules)
+ GET / 200 in 488ms

@@ -643,7 +643,7 @@ function App() {
           }
         />
 
-        <AgentVisualizer isExpanded={isEventsPaneExpanded} currentAgentName={selectedAgentName} />
+        <AgentVisualizer isExpanded={isEventsPaneExpanded} currentAgentName={selectedAgentName} sessionStatus={sessionStatus} />
       </div>
 
       <BottomToolbar

@@ -85,9 +85,9 @@ You: *[use capture_sales_data tool with full_name: "Rajesh Kumar"]*
 - When you receive a transcript that begins with "AUDIO_UPLOAD_TRANSCRIPT:", your behavior must change.
 - The user is NOT on a live call. Do NOT ask for confirmation of the data you extract.
 - Your task is to analyze the entire transcript and extract all available sales data points in a single pass.
-- Use the \`capture_all_sales_data\` tool to save all extracted information at once.
-- For any data points that you cannot find in the transcript, you MUST pass "Not Available" as the value for that field in the \`capture_all_sales_data\` tool.
-- After calling the tool, inform the user that the sales data has been processed and use the \`disconnect_session\` tool to end the session.
+- Use the capture_all_sales_data tool to save all extracted information at once.
+- For any data points that you cannot find in the transcript, you MUST pass "Not Available" as the value for that field in the capture_all_sales_data tool.
+- After calling the tool, inform the user that the sales data has been processed and use the disconnect_session tool to end the session.
 - Do not ask for any further information or continue the conversation.
 
 # Conversation Flow
@@ -111,11 +111,7 @@ Once ALL 3 data points are collected and verified:
 1. **Thank the customer**: "Wonderful, thank you for confirming all the details."
 2. **Connect message**: "We will now connect you with the [CAR_BRAND] dealer near you. Please hold on."
    - Extract the car brand from the car_model data point (e.g., "Toyota Camry" → "Toyota")
-3. **Handoff**: IMMEDIATELY use the handoff_to_dealer tool with:
-   - customer_name: The verified full name
-   - car_model: The verified car model
-   - car_brand: Extract brand from car_model (first word usually)
-   - handoff_message: Your connection message
+3. **Handoff**: IMMEDIATELY transfer the customer to the 'carDealer' agent.
 4. **Do NOT** offer downloads or ask additional questions - go straight to handoff
 
 Remember: Your success is measured by complete, accurate sales data collection followed by immediate handoff to the appropriate car brand dealer.
@@ -284,52 +280,7 @@ Remember: Your success is measured by complete, accurate sales data collection f
       },
     }),
 
-    tool({
-      name: "handoff_to_dealer",
-      description: "Hand off customer to the appropriate car brand dealer after collecting all sales data",
-      parameters: {
-        type: "object",
-        properties: {
-          customer_name: {
-            type: "string",
-            description: "Customer's full name"
-          },
-          car_model: {
-            type: "string", 
-            description: "Car model customer is interested in"
-          },
-          car_brand: {
-            type: "string",
-            description: "Extracted car brand from the car model (e.g., 'Toyota' from 'Toyota Camry')"
-          },
-          handoff_message: {
-            type: "string",
-            description: "The message about connecting to the dealer"
-          }
-        },
-        required: ["customer_name", "car_model", "car_brand", "handoff_message"],
-        additionalProperties: false,
-      },
-      execute: async (input, details) => {
-        console.log(`[Handoff] Transferring ${input.customer_name} to ${input.car_brand} dealer for ${input.car_model}`);
-        
-        // This will trigger the handoff to carDealer agent
-        const context = details?.context as any;
-        if (context?.handoffToAgent) {
-          return context.handoffToAgent('carDealer', {
-            customerName: input.customer_name,
-            carModel: input.car_model,
-            carBrand: input.car_brand,
-            handoffReason: `Customer interested in ${input.car_model}`
-          });
-        }
-        
-        return { 
-          success: true, 
-          message: `Connecting ${input.customer_name} to ${input.car_brand} dealer for ${input.car_model}` 
-        };
-      },
-    }),
+
 
     tool({
       name: "disconnect_session",
