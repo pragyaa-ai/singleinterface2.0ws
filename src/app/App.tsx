@@ -478,11 +478,22 @@ function App() {
       }
     }
 
-    // Clean up on unmount or when sessionStatus is updated.
+    // Only stop recording when actually disconnecting, not during agent handoffs
     return () => {
-      stopRecording();
+      if (sessionStatus === "DISCONNECTED") {
+        console.log('[Audio Debug] Session disconnected, stopping recording');
+        stopRecording();
+      }
     };
   }, [sessionStatus]);
+
+  // Cleanup recording on component unmount
+  useEffect(() => {
+    return () => {
+      console.log('[Audio Debug] Component unmounting, stopping recording');
+      stopRecording();
+    };
+  }, []);
 
   const agentSetKey = searchParams.get("agentConfig") || "default";
 

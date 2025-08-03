@@ -64,3 +64,8 @@ Import trace for requested module:
  GET / 200 in 559ms
  ✓ Compiled in 31.8s (2161 modules)
  GET /?agentConfig=SingleInterface 200 in 1128ms
+ ✓ Compiled in 1743ms (2161 modules)
+ GET /?agentConfig=SingleInterface 200 in 153ms
+ ✓ Compiled in 599ms (2161 modules)
+ GET /?agentConfig=SingleInterface 200 in 83ms
+ GET / 200 in 528ms
