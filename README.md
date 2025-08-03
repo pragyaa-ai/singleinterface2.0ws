@@ -1,6 +1,47 @@
-# SingleInterface Voice Agent
+# SingleInterface Voice Agent v2.5
 
-This is a demonstration of more advanced patterns for voice agents, using the OpenAI Realtime API and the OpenAI Agents SDK. 
+**Enterprise AI voice agents with multilingual support - simplified.**
+
+This is a demonstration of more advanced patterns for voice agents, using the OpenAI Realtime API and the OpenAI Agents SDK, customized for SingleInterface automotive and business verification use cases.
+
+## 🚀 What's New in v2.5
+
+- **3 Specialized Agents**: Authentication, Spotlight (Sales), and Car Dealer consultation
+- **Working Verification System**: Data points update from "Captured" → "Verified" in real-time
+- **Smart Agent Handoffs**: Automatic transfers between specialized agents
+- **Audio Upload Support**: Process audio files and URLs with automatic transcription
+- **Enhanced Data Collection**: 17 comprehensive data points for business verification
+- **Pragyaa Branding**: Complete custom branding with logo and favicon
+- **Professional UI**: Real-time AgentVisualizer with progress tracking and metrics
+
+## 🤖 Agent Architecture
+
+### 1. **Authentication Agent**
+- **Purpose**: Business verification and data collection for Google Business Profile
+- **Capabilities**: 
+  - Collects 17 data points (Store ID, Address, Phone, Email, Business Hours, etc.)
+  - Mandatory confirmation protocol for accuracy
+  - Smart escalation system for complex data points
+- **Language Support**: English and Hindi with proper pronunciation
+- **Tools**: `capture_store_data`, `verify_captured_data`, `authenticate_user_information`
+
+### 2. **Spotlight Agent** 
+- **Purpose**: Automotive sales lead generation
+- **Capabilities**:
+  - Collects customer interest: Full Name, Car Model, Email ID
+  - Qualification for car dealer handoff
+  - Automatic LMS integration
+- **Handoff**: Transfers qualified leads to Car Dealer agent
+- **Tools**: `capture_sales_data`, `verify_sales_data`, `capture_all_sales_data`, `push_to_lms`
+
+### 3. **Car Dealer Agent**
+- **Purpose**: Specialized automotive consultation
+- **Capabilities**:
+  - Detailed consultation on specific car brands
+  - Collects 7 consultation data points (Budget, Timeline, Usage, Financing, etc.)
+  - Professional consultation and follow-up coordination
+- **Brand Focus**: Specialized expertise with polite redirection for other brands
+- **Tools**: `capture_consultation_data`, `verify_consultation_data`
 
 ## About the OpenAI Agents SDK
 
@@ -15,17 +56,90 @@ For full documentation, guides, and API references, see the official [OpenAI Age
 
 **NOTE:** This project is based on OpenAI's realtime agents demo and has been customized for SingleInterface voice agent functionality.
 
-There are two main patterns demonstrated:
-1. **Chat-Supervisor:** A realtime-based chat agent interacts with the user and handles basic tasks, while a more intelligent, text-based supervisor model (e.g., `gpt-4.1`) is used extensively for tool calls and more complex responses. This approach provides an easy onramp and high-quality answers, with a small increase in latency.
-2. **Sequential Handoff:** Specialized agents (powered by realtime api) transfer the user between them to handle specific user intents. This is great for customer service, where user intents can be handled sequentially by specialist models that excel in a specific domains. This helps avoid the model having all instructions and tools in a single agent, which can degrade performance.
+## 🔄 Agent Flow Patterns
 
-## Setup
+### Primary Flow: Sequential Handoff (v2.5)
+The main SingleInterface scenario uses sequential handoffs between specialized agents:
 
-- This is a Next.js typescript app. Install dependencies with `npm i`.
-- Add your `OPENAI_API_KEY` to your env. Either add it to your `.bash_profile` or equivalent, or copy `.env.sample` to `.env` and add it there.
-- Start the server with `npm run dev`
-- Open your browser to [http://localhost:3000](http://localhost:3000). It should default to the `chatSupervisor` Agent Config.
-- You can change examples via the "Scenario" dropdown in the top right.
+1. **Authentication Agent** → Verifies business and collects store data
+2. **Spotlight Agent** → Captures automotive sales leads 
+3. **Car Dealer Agent** → Provides specialized automotive consultation
+
+### Legacy Patterns
+1. **Chat-Supervisor:** A realtime-based chat agent interacts with the user and handles basic tasks, while a more intelligent, text-based supervisor model (e.g., `gpt-4.1`) is used extensively for tool calls and more complex responses.
+2. **Sequential Handoff:** Specialized agents transfer the user between them to handle specific user intents.
+
+## 🎯 Use Cases
+
+- **Business Verification**: Complete Google Business Profile data collection
+- **Automotive Sales**: Lead generation and qualification
+- **Customer Consultation**: Specialized automotive advice and follow-up
+- **Multilingual Support**: English and Hindi language support
+- **Audio Processing**: File upload and URL-based audio transcription
+
+## 🛠️ Setup
+
+### Prerequisites
+- Node.js 18+ and npm
+- OpenAI API key with Realtime API access
+
+### Installation
+```bash
+# Clone the repository
+git clone https://github.com/pragyaa-ai/singleinterfaceVoiceAgent2.0.git
+cd singleinterfaceVoiceAgent2.0
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.sample .env
+# Add your OPENAI_API_KEY to the .env file
+
+# Start development server
+npm run dev
+```
+
+### Production Deployment
+```bash
+# Build for production
+npm run build
+
+# Start production server
+npm run start
+```
+
+### Accessing the Application
+- Open your browser to [http://localhost:3000](http://localhost:3000)
+- The default scenario is "SingleInterface" with the 3 specialized agents
+- Select agents via the "Agent" dropdown: Authentication, Spotlight, or Car Dealer
+- Use the "Agent View" panel to monitor real-time data collection and handoffs
+
+### Features
+- **Voice Interaction**: Click "Connect" and speak directly to the agents
+- **Audio Upload**: Upload audio files or provide URLs for transcription
+- **Real-time Monitoring**: Watch data collection progress in the Agent Visualizer
+- **Data Export**: Download collected data as JSON files
+
+## 📋 Version History
+
+### v2.5 (Current)
+- **3 Specialized Agents**: Authentication, Spotlight, Car Dealer
+- **Working Verification System**: Real-time status updates
+- **Audio Upload Support**: File and URL processing
+- **Enhanced UI**: Professional AgentVisualizer with metrics
+- **Pragyaa Branding**: Complete custom branding
+
+### v2.0.0 (Stable Fallback)
+- **17 Data Points**: Comprehensive business verification
+- **Confirmation Protocol**: Mandatory data verification
+- **Smart Escalation**: Expert review system
+- **Enhanced UI**: Data collection progress tracking
+
+### v1.x (Legacy)
+- Basic agent framework
+- Simple data collection
+- Core voice agent functionality
 
 # Agentic Pattern 1: Chat-Supervisor
 
