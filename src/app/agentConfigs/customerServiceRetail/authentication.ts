@@ -406,7 +406,7 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
             enum: ["store_id", "address_line_1", "locality", "landmark", "city", "state", "pin_code", "business_hours", "weekly_off", "main_phone_std", "manager_number", "store_email", "manager_email", "designation", "parking_options", "payment_methods", "alternate_number"],
             description: "The type of data being verified"
           },
-          confirmed__value: {
+          confirmed_value: {
             type: "string",
             description: "The value confirmed by the customer"
           }
