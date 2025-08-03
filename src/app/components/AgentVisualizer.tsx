@@ -271,7 +271,7 @@ const AgentVisualizer = ({
             {/* Data Collection Display for all agents */}
             {dataToShow.map((dataPoint) => {
               const IconComponent = getDataPointIcon(dataPoint.id);
-              const displayName = isSpotlightAgent ? dataPoint.label : isCarDealerAgent ? dataPoint.label : dataPoint.name;
+              const displayName = (dataPoint as any).label || (dataPoint as any).name;
               
               return (
                 <div key={dataPoint.id} className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2 last:border-b-0">
