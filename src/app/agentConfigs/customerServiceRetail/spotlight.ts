@@ -147,10 +147,11 @@ Remember: Your success is measured by complete, accurate sales data collection f
         additionalProperties: false,
       },
       execute: async (input, details) => {
+        const typedInput = input as { data_type: string; value: string; notes?: string };
         const context = details?.context as any;
         if (context?.captureSalesData) {
-          const result = context.captureSalesData(input.data_type, input.value, input.notes);
-          console.log(`[Sales Data Captured] ${input.data_type}: ${input.value}`);
+          const result = context.captureSalesData(typedInput.data_type, typedInput.value, typedInput.notes);
+          console.log(`[Sales Data Captured] ${typedInput.data_type}: ${typedInput.value}`);
           return result;
         } else {
           console.warn('[Sales Data] Capture function not available');
@@ -183,10 +184,11 @@ Remember: Your success is measured by complete, accurate sales data collection f
         additionalProperties: false,
       },
       execute: async (input, details) => {
+        const typedInput = input as { data_type: string; confirmed: boolean };
         const context = details?.context as any;
         if (context?.verifySalesData) {
-          const result = context.verifySalesData(input.data_type, input.confirmed);
-          console.log(`[Sales Data Verified] ${input.data_type}: ${input.confirmed ? 'Confirmed' : 'Rejected'}`);
+          const result = context.verifySalesData(typedInput.data_type, typedInput.confirmed);
+          console.log(`[Sales Data Verified] ${typedInput.data_type}: ${typedInput.confirmed ? 'Confirmed' : 'Rejected'}`);
           return result;
         } else {
           console.warn('[Sales Data] Verify function not available');
@@ -243,7 +245,8 @@ Remember: Your success is measured by complete, accurate sales data collection f
       execute: async (input, details) => {
         const context = details?.context as any;
         if (context?.pushToLMS) {
-          const result = context.pushToLMS(input.sales_data);
+          const typedInput = input as { sales_data: any };
+          const result = context.pushToLMS(typedInput.sales_data);
           console.log(`[LMS Integration] Sales data pushed to SingleInterface LMS`);
           return result;
         } else {
@@ -271,8 +274,9 @@ Remember: Your success is measured by complete, accurate sales data collection f
       execute: async (input, details) => {
         const context = details?.context as any;
         if (context?.downloadSalesData) {
-          const result = context.downloadSalesData(input.format);
-          console.log(`[Download] Sales data download prepared in ${input.format} format`);
+          const typedInput = input as { format: string };
+          const result = context.downloadSalesData(typedInput.format);
+          console.log(`[Download] Sales data download prepared in ${typedInput.format} format`);
           return result;
         } else {
           console.warn('[Download] Download function not available');
@@ -301,7 +305,8 @@ Remember: Your success is measured by complete, accurate sales data collection f
         const context = details?.context as any;
         if (context?.disconnectSession) {
           context.disconnectSession();
-          console.log(`[Agent Disconnect] ${input.reason}`);
+          const typedInput = input as { reason: string };
+          console.log(`[Agent Disconnect] ${typedInput.reason}`);
           return { success: true, message: "Session disconnected successfully." };
         } else {
           console.warn('[Agent Disconnect] Disconnect function not available');
