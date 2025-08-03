@@ -12,14 +12,14 @@ import { carDealerAgent } from './carDealer';
 (returnsAgent.handoffs as any).push(authenticationAgent, salesAgent, simulatedHumanAgent, spotlightAgent, carDealerAgent);
 (salesAgent.handoffs as any).push(authenticationAgent, returnsAgent, simulatedHumanAgent, spotlightAgent, carDealerAgent);
 (simulatedHumanAgent.handoffs as any).push(authenticationAgent, returnsAgent, salesAgent, spotlightAgent, carDealerAgent);
-(spotlightAgent.handoffs as any).push(carDealerAgent, simulatedHumanAgent); // Spotlight hands off to car dealer and human agent
+(spotlightAgent.handoffs as any).push(carDealerAgent, simulatedHumanAgent); // Spotlight hands off to car dealer and human agent (human agent accessible via handoff only)
 (carDealerAgent.handoffs as any).push(authenticationAgent, returnsAgent, salesAgent, simulatedHumanAgent, spotlightAgent);
 
 export const customerServiceRetailScenario = [
   authenticationAgent,
-  returnsAgent,
-  salesAgent,
-  simulatedHumanAgent,
+  // returnsAgent,        // Hidden from dropdown
+  // salesAgent,          // Hidden from dropdown  
+  // simulatedHumanAgent, // Hidden from dropdown
   spotlightAgent,
   carDealerAgent,
 ];
