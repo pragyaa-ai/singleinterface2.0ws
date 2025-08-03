@@ -298,6 +298,7 @@ const AgentVisualizer = ({
                 </div>
               );
             })}
+          </div>
         </div>
 
         {/* Agent Network */}
