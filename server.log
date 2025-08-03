@@ -69,3 +69,133 @@ Import trace for requested module:
  ✓ Compiled in 599ms (2161 modules)
  GET /?agentConfig=SingleInterface 200 in 83ms
  GET / 200 in 528ms
+ GET /?agentConfig=SingleInterface 200 in 678ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1520ms (2151 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 1988ms
+ ○ Compiling /api/session ...
+ ✓ Compiled /api/session in 759ms (2170 modules)
+ GET /api/session 200 in 1659ms
+ ○ Compiling /api/responses ...
+ ✓ Compiled /api/responses in 955ms (2297 modules)
+ POST /api/responses 200 in 3032ms
+ POST /api/responses 200 in 3785ms
+ POST /api/responses 200 in 2895ms
+ POST /api/responses 200 in 2059ms
+ POST /api/responses 200 in 3049ms
+ POST /api/responses 200 in 1365ms
+ POST /api/responses 200 in 1708ms
+ POST /api/responses 200 in 4725ms
+ POST /api/responses 200 in 4633ms
+ POST /api/responses 200 in 1603ms
+ POST /api/responses 200 in 1532ms
+ POST /api/responses 200 in 1944ms
+ POST /api/responses 200 in 3323ms
+ POST /api/responses 200 in 2913ms
+ POST /api/responses 200 in 1613ms
+ POST /api/responses 200 in 1751ms
+ POST /api/responses 200 in 2511ms
+ POST /api/responses 200 in 1888ms
+ POST /api/responses 200 in 2445ms
+ POST /api/responses 200 in 1876ms
+ POST /api/responses 200 in 1514ms
+ POST /api/responses 200 in 1738ms
+ POST /api/responses 200 in 2182ms
+ POST /api/responses 200 in 1254ms
+ POST /api/responses 200 in 2302ms
+ POST /api/responses 200 in 2217ms
+ POST /api/responses 200 in 2207ms
+ POST /api/responses 200 in 2379ms
+ POST /api/responses 200 in 3572ms
+ POST /api/responses 200 in 3046ms
+ POST /api/responses 200 in 1982ms
+ POST /api/responses 200 in 2188ms
+ POST /api/responses 200 in 3874ms
+ POST /api/responses 200 in 4556ms
+ POST /api/responses 200 in 1646ms
+ POST /api/responses 200 in 1746ms
+ POST /api/responses 200 in 1968ms
+ POST /api/responses 200 in 2344ms
+ POST /api/responses 200 in 1319ms
+ POST /api/responses 200 in 1592ms
+ POST /api/responses 200 in 2341ms
+ ⨯ ./src/app/components/AgentVisualizer.tsx
+Error:   [31mx[0m Unexpected token `div`. Expected jsx identifier
+     ,-[[36;1;4m/Users/gulshan/SingleInterface/openai-realtime-agents/src/app/components/AgentVisualizer.tsx[0m:213:1]
+ [2m210[0m |   ];
+ [2m211[0m | 
+ [2m212[0m |   return (
+ [2m213[0m |     <div className="flex-1 bg-gray-100 rounded-lg overflow-hidden flex flex-col">
+     : [35;1m     ^^^[0m
+ [2m214[0m |       {/* Header */}
+ [2m215[0m |       <div className="bg-gradient-to-r from-purple-600 to-blue-500 text-white p-4 flex items-center justify-between">
+ [2m216[0m |         <div>
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/components/AgentVisualizer.tsx
+./src/app/App.tsx
+ ⨯ ./src/app/components/AgentVisualizer.tsx
+Error:   [31mx[0m Unexpected token `div`. Expected jsx identifier
+     ,-[[36;1;4m/Users/gulshan/SingleInterface/openai-realtime-agents/src/app/components/AgentVisualizer.tsx[0m:213:1]
+ [2m210[0m |   ];
+ [2m211[0m | 
+ [2m212[0m |   return (
+ [2m213[0m |     <div className="flex-1 bg-gray-100 rounded-lg overflow-hidden flex flex-col">
+     : [35;1m     ^^^[0m
+ [2m214[0m |       {/* Header */}
+ [2m215[0m |       <div className="bg-gradient-to-r from-purple-600 to-blue-500 text-white p-4 flex items-center justify-between">
+ [2m216[0m |         <div>
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/components/AgentVisualizer.tsx
+./src/app/App.tsx
+ ✓ Compiled in 1864ms (2158 modules)
+ GET /?agentConfig=SingleInterface 200 in 189ms
+ ⨯ ./src/app/components/AgentVisualizer.tsx
+Error:   [31mx[0m Unexpected token `div`. Expected jsx identifier
+     ,-[[36;1;4m/Users/gulshan/SingleInterface/openai-realtime-agents/src/app/components/AgentVisualizer.tsx[0m:213:1]
+ [2m210[0m |   ];
+ [2m211[0m | 
+ [2m212[0m |   return (
+ [2m213[0m |     <div className="flex-1 bg-gray-100 rounded-lg overflow-hidden flex flex-col">
+     : [35;1m     ^^^[0m
+ [2m214[0m |       {/* Header */}
+ [2m215[0m |       <div className="bg-gradient-to-r from-purple-600 to-blue-500 text-white p-4 flex items-center justify-between">
+ [2m216[0m |         <div>
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/components/AgentVisualizer.tsx
+./src/app/App.tsx
+ ⨯ ./src/app/components/AgentVisualizer.tsx
+Error:   [31mx[0m Unexpected token `div`. Expected jsx identifier
+     ,-[[36;1;4m/Users/gulshan/SingleInterface/openai-realtime-agents/src/app/components/AgentVisualizer.tsx[0m:213:1]
+ [2m210[0m |   ];
+ [2m211[0m | 
+ [2m212[0m |   return (
+ [2m213[0m |     <div className="flex-1 bg-gray-100 rounded-lg overflow-hidden flex flex-col">
+     : [35;1m     ^^^[0m
+ [2m214[0m |       {/* Header */}
+ [2m215[0m |       <div className="bg-gradient-to-r from-purple-600 to-blue-500 text-white p-4 flex items-center justify-between">
+ [2m216[0m |         <div>
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/components/AgentVisualizer.tsx
+./src/app/App.tsx
+ GET / 500 in 84ms
+[?25h

@@ -259,105 +259,45 @@ const AgentVisualizer = ({
             </button>
           </div>
           
-          {/* Progress Bar - only show for data collection agents */}
-          {!isCarDealerAgent && (
-            <div className="bg-gray-200 rounded-full h-2 mb-3">
-              <div 
-                className="bg-green-500 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${completionPercentage}%` }}
-              ></div>
-            </div>
-          )}
+          {/* Progress Bar - show for all data collection agents */}
+          <div className="bg-gray-200 rounded-full h-2 mb-3">
+            <div 
+              className="bg-green-500 h-2 rounded-full transition-all duration-500"
+              style={{ width: `${completionPercentage}%` }}
+            ></div>
+          </div>
           
           <div className="bg-white rounded-lg p-3 space-y-2 shadow-sm max-h-64 overflow-y-auto">
-            {isCarDealerAgent ? (
-              // Car Dealer Capabilities Display
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2">
+            {/* Data Collection Display for all agents */}
+            {dataToShow.map((dataPoint) => {
+              const IconComponent = getDataPointIcon(dataPoint.id);
+              const displayName = isSpotlightAgent ? dataPoint.label : isCarDealerAgent ? dataPoint.label : dataPoint.name;
+              
+              return (
+                <div key={dataPoint.id} className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2 last:border-b-0">
                   <div className="flex items-center">
-                    <TruckIcon className="h-5 w-5 mr-3 text-blue-500" />
-                    <span className="text-sm font-medium">Vehicle Information</span>
+                    <IconComponent className="h-5 w-5 mr-3 text-blue-500" />
+                    <span className="text-sm font-medium">{displayName}</span>
                   </div>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Available</span>
-                </div>
-                <div className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2">
                   <div className="flex items-center">
-                    <CreditCardIcon className="h-5 w-5 mr-3 text-purple-500" />
-                    <span className="text-sm font-medium">Financing Options</span>
+                    {dataPoint.value ? (
+                      <span className="text-xs text-gray-500 mr-2 max-w-24 truncate">{dataPoint.value}</span>
+                    ) : null}
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      dataPoint.status === 'verified' || dataPoint.status === 'captured' 
+                        ? 'bg-green-100 text-green-800' 
+                        : dataPoint.status === 'not_available'
+                        ? 'bg-gray-100 text-gray-600'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {dataPoint.status === 'verified' ? 'Verified' : 
+                       dataPoint.status === 'captured' ? 'Captured' :
+                       dataPoint.status === 'not_available' ? 'N/A' : 'Pending'}
+                    </span>
                   </div>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Available</span>
                 </div>
-                <div className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2">
-                  <div className="flex items-center">
-                    <CalendarIcon className="h-5 w-5 mr-3 text-red-500" />
-                    <span className="text-sm font-medium">Test Drive Scheduling</span>
-                  </div>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Available</span>
-                </div>
-                <div className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2">
-                  <div className="flex items-center">
-                    <WrenchScrewdriverIcon className="h-5 w-5 mr-3 text-orange-500" />
-                    <span className="text-sm font-medium">Service & Warranty</span>
-                  </div>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Available</span>
-                </div>
-                <div className="flex items-center justify-between text-gray-600">
-                  <div className="flex items-center">
-                    <ChatBubbleLeftRightIcon className="h-5 w-5 mr-3 text-indigo-500" />
-                    <span className="text-sm font-medium">Brand Expertise</span>
-                  </div>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Specialized</span>
-                </div>
-              </div>
-            ) : (
-              // Data Collection Display (Spotlight, Car Dealer, and Authentication agents)
-              dataToShow.map((dataPoint) => {
-                const IconComponent = getDataPointIcon(dataPoint.id);
-                const displayName = isSpotlightAgent ? dataPoint.label : isCarDealerAgent ? dataPoint.label : dataPoint.name;
-                
-                return (
-                  <div key={dataPoint.id} className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2 last:border-b-0">
-                    <div className="flex items-center">
-                      <IconComponent className={`h-5 w-5 mr-3 ${
-                        dataPoint.status === 'captured' || dataPoint.status === 'verified' 
-                          ? 'text-green-500' 
-                          : dataPoint.status === 'not_available'
-                          ? 'text-orange-500'
-                          : 'text-gray-400'
-                      }`} />
-                      <span className="text-sm font-medium">{displayName}</span>
-                    </div>
-                    <div className="flex items-center">
-                      {dataPoint.value ? (
-                        <div className="text-right">
-                          <span className="text-sm text-gray-800 font-medium">{dataPoint.value}</span>
-                          {dataPoint.timestamp && (
-                            <p className="text-xs text-gray-500">
-                              {isSpotlightAgent || isCarDealerAgent
-                                ? new Date(dataPoint.timestamp).toLocaleTimeString()
-                                : dataPoint.timestamp.toLocaleTimeString()
-                              }
-                            </p>
-                          )}
-                        </div>
-                      ) : dataPoint.status === 'not_available' ? (
-                        <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                          Not Available
-                        </span>
-                      ) : (
-                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                          Pending
-                        </span>
-                      )}
-                      {(dataPoint.status === 'captured' || dataPoint.status === 'verified') && (
-                        <CheckCircleIcon className="h-4 w-4 ml-2 text-green-500" />
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+              );
+            })}
         </div>
 
         {/* Agent Network */}
