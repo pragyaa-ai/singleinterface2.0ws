@@ -311,9 +311,10 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
         additionalProperties: false,
       },
       execute: async (input, details) => {
+        const typedInput = input as Record<string, any>;
         const context = details?.context as any;
         if (context?.captureDataPoint) {
-          for (const [key, value] of Object.entries(input)) {
+          for (const [key, value] of Object.entries(typedInput)) {
             if (value) {
               context.captureDataPoint(key, value, 'verified');
               console.log(`[Agent Bulk Data Capture] ${key}: ${value}`);
