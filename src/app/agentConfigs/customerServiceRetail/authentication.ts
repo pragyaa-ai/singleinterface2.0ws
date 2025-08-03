@@ -342,10 +342,11 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
         additionalProperties: false,
       },
       execute: async (input, details) => {
+        const typedInput = input as { reason: string };
         const context = details?.context as any;
         if (context?.disconnectSession) {
           context.disconnectSession();
-          console.log(`[Agent Disconnect] ${input.reason}`);
+          console.log(`[Agent Disconnect] ${typedInput.reason}`);
           return { success: true, message: "Session disconnected successfully." };
         } else {
           console.warn('[Agent Disconnect] Disconnect function not available');
