@@ -150,14 +150,15 @@ Remember: You are a dedicated [CAR_BRAND] dealer who lives and breathes your bra
         additionalProperties: false,
       },
       execute: async (input, details) => {
-        console.log(`[Car Dealer Data] ${input.data_type}: ${input.value}`);
+        const typedInput = input as { data_type: string; value: string };
+        console.log(`[Car Dealer Data] ${typedInput.data_type}: ${typedInput.value}`);
         
         const context = details?.context as any;
         if (context?.captureConsultationData) {
-          context.captureConsultationData(input.data_type, input.value);
+          context.captureConsultationData(typedInput.data_type, typedInput.value);
           return { 
             success: true, 
-            message: `Captured ${input.data_type}: ${input.value}` 
+            message: `Captured ${typedInput.data_type}: ${typedInput.value}` 
           };
         } else {
           console.warn('[Car Dealer] Capture function not available');
@@ -189,14 +190,15 @@ Remember: You are a dedicated [CAR_BRAND] dealer who lives and breathes your bra
         additionalProperties: false,
       },
       execute: async (input, details) => {
-        console.log(`[Car Dealer Verify] ${input.data_type}: ${input.confirmed ? 'Confirmed' : 'Rejected'}`);
+        const typedInput = input as { data_type: string; confirmed: boolean };
+        console.log(`[Car Dealer Verify] ${typedInput.data_type}: ${typedInput.confirmed ? 'Confirmed' : 'Rejected'}`);
         
         const context = details?.context as any;
         if (context?.verifyConsultationData) {
-          context.verifyConsultationData(input.data_type, input.confirmed);
+          context.verifyConsultationData(typedInput.data_type, typedInput.confirmed);
           return { 
             success: true, 
-            message: `${input.data_type} ${input.confirmed ? 'confirmed' : 'needs correction'}` 
+            message: `${typedInput.data_type} ${typedInput.confirmed ? 'confirmed' : 'needs correction'}` 
           };
         } else {
           return { 
