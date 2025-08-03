@@ -23,6 +23,7 @@ import {
 } from '@heroicons/react/24/solid';
 import { useDataCollection } from '../contexts/DataCollectionContext';
 import { useSalesData } from '../contexts/SalesDataContext';
+import { useConsultationData } from '../contexts/ConsultationDataContext';
 
 const AgentVisualizer = ({ 
   isExpanded, 
@@ -47,16 +48,26 @@ const AgentVisualizer = ({
     exportSalesData,
     downloadSalesData
   } = useSalesData();
+  const {
+    consultationData,
+    getConsultationProgress,
+    exportConsultationData,
+    downloadConsultationData
+  } = useConsultationData();
 
   // Determine if we're showing sales data (spotlight agent) or store data (authentication)
   const isSpotlightAgent = currentAgentName === 'spotlight';
   const isCarDealerAgent = currentAgentName === 'carDealer';
-  const dataToShow = isSpotlightAgent ? salesData : capturedData;
+  const dataToShow = isSpotlightAgent ? salesData : isCarDealerAgent ? consultationData : capturedData;
   const completionPercentage = isSpotlightAgent 
     ? getSalesDataProgress().percentage 
+    : isCarDealerAgent 
+    ? getConsultationProgress().percentage
     : getCompletionPercentage();
   const capturedCount = isSpotlightAgent 
     ? getSalesDataProgress().completed 
+    : isCarDealerAgent
+    ? getConsultationProgress().completed
     : getCapturedCount();
 
   // Call duration tracking
@@ -97,24 +108,7 @@ const AgentVisualizer = ({
     if (isSpotlightAgent) {
       downloadSalesData('json');
     } else if (isCarDealerAgent) {
-      // For car dealer, download consultation summary
-      const consultationData = {
-        agent: 'Car Dealer',
-        timestamp: new Date().toISOString(),
-        sessionDuration: callDuration,
-        status: 'Active Consultation',
-        customerInteraction: 'Automotive consultation in progress'
-      };
-      const dataStr = JSON.stringify(consultationData, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `consultation-summary-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadConsultationData('json');
     } else {
       const collectedData = exportData();
       const dataStr = JSON.stringify(collectedData, null, 2);
@@ -155,6 +149,14 @@ const AgentVisualizer = ({
       'full_name': UserCircleIcon,
       'car_model': TruckIcon,
       'email_id': EnvelopeIcon,
+      // Consultation data icons (car dealer agent)
+      'budget_range': CreditCardIcon,
+      'timeline': CalendarIcon,
+      'usage_type': TruckIcon,
+      'financing_preference': BuildingOfficeIcon,
+      'test_drive_interest': MapPinIcon,
+      'preferred_features': WrenchScrewdriverIcon,
+      'contact_preference': PhoneIcon,
     };
     return iconMap[dataId] || ClipboardDocumentListIcon;
   };
@@ -190,9 +192,13 @@ const AgentVisualizer = ({
     { name: 'Human Agent' },
   ];
 
-  const totalDataPoints = isSpotlightAgent ? 3 : capturedData.length;
+  const totalDataPoints = isSpotlightAgent ? 3 : isCarDealerAgent ? consultationData.length : capturedData.length;
   const metrics = isCarDealerAgent ? [
-    { name: 'Consultation Mode', value: 'Active', icon: UserCircleIcon },
+    { 
+      name: 'Consultation Progress', 
+      value: `${capturedCount}/${totalDataPoints} (${completionPercentage}%)`, 
+      icon: ClipboardDocumentListIcon 
+    },
     { name: 'Call Duration', value: callDuration, icon: ClockIcon },
   ] : [
     { 
@@ -304,10 +310,10 @@ const AgentVisualizer = ({
                 </div>
               </div>
             ) : (
-              // Data Collection Display (Spotlight and Authentication agents)
+              // Data Collection Display (Spotlight, Car Dealer, and Authentication agents)
               dataToShow.map((dataPoint) => {
                 const IconComponent = getDataPointIcon(dataPoint.id);
-                const displayName = isSpotlightAgent ? dataPoint.label : dataPoint.name;
+                const displayName = isSpotlightAgent ? dataPoint.label : isCarDealerAgent ? dataPoint.label : dataPoint.name;
                 
                 return (
                   <div key={dataPoint.id} className="flex items-center justify-between text-gray-600 border-b border-gray-100 pb-2 last:border-b-0">
@@ -327,7 +333,7 @@ const AgentVisualizer = ({
                           <span className="text-sm text-gray-800 font-medium">{dataPoint.value}</span>
                           {dataPoint.timestamp && (
                             <p className="text-xs text-gray-500">
-                              {isSpotlightAgent 
+                              {isSpotlightAgent || isCarDealerAgent
                                 ? new Date(dataPoint.timestamp).toLocaleTimeString()
                                 : dataPoint.timestamp.toLocaleTimeString()
                               }

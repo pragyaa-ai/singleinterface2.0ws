@@ -8,134 +8,59 @@
    - Environments: .env
 
  ✓ Starting...
- ✓ Ready in 1994ms
- ○ Compiling / ...
- ✓ Compiled / in 2.2s (1820 modules)
- GET / 200 in 2647ms
- ✓ Compiled in 175ms (811 modules)
- ✓ Compiled in 983ms (1820 modules)
- ✓ Compiled in 230ms (811 modules)
- ✓ Compiled / in 157ms (1009 modules)
- GET / 200 in 488ms
- ✓ Compiled in 321ms (1820 modules)
- ✓ Compiled in 512ms (1820 modules)
- GET /?agentConfig=SingleInterface 200 in 429ms
+ ✓ Ready in 3.1s
  ○ Compiling /_not-found ...
- ✓ Compiled /_not-found in 760ms (1810 modules)
- GET /.well-known/appspecific/com.chrome.devtools.json 404 in 866ms
- ✓ Compiled /api/session in 438ms (1829 modules)
- GET /api/session 200 in 1007ms
- ○ Compiling /api/responses ...
- ✓ Compiled /api/responses in 953ms (1956 modules)
- POST /api/responses 200 in 3193ms
- POST /api/responses 200 in 2604ms
- POST /api/responses 200 in 1932ms
- POST /api/responses 200 in 2089ms
- POST /api/responses 200 in 1952ms
- POST /api/responses 200 in 3452ms
- POST /api/responses 200 in 1420ms
- POST /api/responses 200 in 1924ms
- POST /api/responses 200 in 1796ms
- POST /api/responses 200 in 2133ms
- POST /api/responses 200 in 1865ms
- POST /api/responses 200 in 1984ms
- POST /api/responses 200 in 1919ms
- POST /api/responses 200 in 1950ms
- POST /api/responses 200 in 2074ms
- POST /api/responses 200 in 1695ms
- POST /api/responses 200 in 2945ms
- POST /api/responses 200 in 1458ms
- POST /api/responses 200 in 2405ms
- POST /api/responses 200 in 2074ms
- POST /api/responses 200 in 2139ms
- POST /api/responses 200 in 2174ms
- POST /api/responses 200 in 3189ms
- POST /api/responses 200 in 2410ms
- POST /api/responses 200 in 3623ms
- POST /api/responses 200 in 3228ms
- POST /api/responses 200 in 3193ms
- POST /api/responses 200 in 3501ms
- POST /api/responses 200 in 2772ms
- POST /api/responses 200 in 2385ms
- POST /api/responses 200 in 3380ms
- POST /api/responses 200 in 7362ms
- POST /api/responses 200 in 2142ms
- POST /api/responses 200 in 4636ms
- POST /api/responses 200 in 4164ms
- POST /api/responses 200 in 2504ms
- POST /api/responses 200 in 2795ms
- POST /api/responses 200 in 2126ms
- POST /api/responses 200 in 3869ms
- ✓ Compiled in 2s (1821 modules)
- GET /?agentConfig=SingleInterface 200 in 237ms
- ✓ Compiled in 560ms (1821 modules)
- GET /?agentConfig=SingleInterface 200 in 90ms
- ✓ Compiled in 641ms (1821 modules)
- GET /?agentConfig=SingleInterface 200 in 132ms
- ✓ Compiled in 413ms (1821 modules)
- GET /?agentConfig=SingleInterface 200 in 68ms
- ✓ Compiled in 676ms (1821 modules)
- GET /?agentConfig=SingleInterface 200 in 73ms
- ✓ Compiled in 1168ms (1821 modules)
- GET /?agentConfig=SingleInterface 200 in 86ms
- ✓ Compiled in 2.4s (1825 modules)
- GET /?agentConfig=SingleInterface 200 in 320ms
- ✓ Compiled in 1001ms (1825 modules)
- GET /?agentConfig=SingleInterface 200 in 105ms
- ✓ Compiled in 1444ms (1825 modules)
- GET /?agentConfig=SingleInterface 200 in 259ms
- ✓ Compiled in 1456ms (1825 modules)
- GET /?agentConfig=SingleInterface 200 in 129ms
- ✓ Compiled in 944ms (1825 modules)
- GET /?agentConfig=SingleInterface 200 in 89ms
- ✓ Compiled in 2.2s (1825 modules)
- GET /?agentConfig=SingleInterface 200 in 95ms
- GET / 200 in 490ms
- ✓ Compiled in 993ms (1825 modules)
- GET /?agentConfig=SingleInterface 200 in 92ms
- GET /?agentConfig=SingleInterface 200 in 994ms
- ○ Compiling /_not-found ...
- ✓ Compiled /_not-found in 1003ms (1815 modules)
- GET /.well-known/appspecific/com.chrome.devtools.json 404 in 1114ms
- GET /?agentConfig=SingleInterface 200 in 1238ms
- GET /.well-known/appspecific/com.chrome.devtools.json 404 in 76ms
- ○ Compiling /api/session ...
- ✓ Compiled /api/session in 2.8s (1029 modules)
- GET /api/session 200 in 5219ms
- ○ Compiling /api/responses ...
- ✓ Compiled /api/responses in 5.7s (1156 modules)
- POST /api/responses 200 in 7613ms
- POST /api/responses 200 in 11934ms
- POST /api/responses 200 in 11998ms
- POST /api/responses 200 in 8856ms
- POST /api/responses 200 in 1690ms
- POST /api/responses 200 in 1805ms
- POST /api/responses 200 in 2058ms
- POST /api/responses 200 in 1906ms
- POST /api/responses 200 in 2535ms
- POST /api/responses 200 in 1899ms
- POST /api/responses 200 in 2205ms
- POST /api/responses 200 in 1693ms
- POST /api/responses 200 in 1803ms
- POST /api/responses 200 in 2481ms
- POST /api/responses 200 in 2705ms
- POST /api/responses 200 in 2060ms
- POST /api/responses 200 in 2287ms
- POST /api/responses 200 in 1638ms
- POST /api/responses 200 in 1788ms
- POST /api/responses 200 in 2169ms
- GET /?agentConfig=SingleInterface 200 in 779ms
- POST /api/responses 200 in 4047ms
- ○ Compiling /_not-found ...
- ✓ Compiled /_not-found in 1033ms (1958 modules)
- GET /.well-known/appspecific/com.chrome.devtools.json 404 in 1219ms
-(node:24224) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 unhandledRejection listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
-(Use `node --trace-warnings ...` to show where the warning was created)
- GET / 200 in 1414ms
- ✓ Compiled in 4.1s (1825 modules)
- GET /?agentConfig=SingleInterface 200 in 349ms
- ✓ Compiled in 706ms (1825 modules)
- GET /?agentConfig=SingleInterface 200 in 50ms
- ✓ Compiled in 750ms (1825 modules)
- GET /?agentConfig=SingleInterface 200 in 35ms
- GET / 200 in 342ms
+ ⨯ ./src/app/agentConfigs/customerServiceRetail/carDealer.ts
+Error:   [31mx[0m Expected ',', got 'capture_consultation_data'
+     ,-[[36;1;4m/Users/gulshan/SingleInterface/openai-realtime-agents/src/app/agentConfigs/customerServiceRetail/carDealer.ts[0m:114:1]
+ [2m111[0m | 7. **Contact Preference** - Best way and time to follow up
+ [2m112[0m | 
+ [2m113[0m | ## Data Capture Protocol:
+ [2m114[0m | - Use `capture_consultation_data` tool whenever customer shares relevant information
+     : [35;1m       ^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+ [2m115[0m | - Listen for natural mentions of budget, timeline, preferences, etc.
+ [2m116[0m | - Don't interrupt the flow - capture data when contextually appropriate
+ [2m117[0m | - Verify important information using `verify_consultation_data` tool
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/agentConfigs/customerServiceRetail/carDealer.ts
+./src/app/agentConfigs/customerServiceRetail/index.ts
+./src/app/App.tsx
+ ⨯ ./src/app/agentConfigs/customerServiceRetail/carDealer.ts
+Error:   [31mx[0m Expected ',', got 'capture_consultation_data'
+     ,-[[36;1;4m/Users/gulshan/SingleInterface/openai-realtime-agents/src/app/agentConfigs/customerServiceRetail/carDealer.ts[0m:114:1]
+ [2m111[0m | 7. **Contact Preference** - Best way and time to follow up
+ [2m112[0m | 
+ [2m113[0m | ## Data Capture Protocol:
+ [2m114[0m | - Use `capture_consultation_data` tool whenever customer shares relevant information
+     : [35;1m       ^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+ [2m115[0m | - Listen for natural mentions of budget, timeline, preferences, etc.
+ [2m116[0m | - Don't interrupt the flow - capture data when contextually appropriate
+ [2m117[0m | - Verify important information using `verify_consultation_data` tool
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/agentConfigs/customerServiceRetail/carDealer.ts
+./src/app/agentConfigs/customerServiceRetail/index.ts
+./src/app/App.tsx
+ GET / 500 in 17946ms
+ GET /_next/static/webpack/e75453f00d4cb2b6.webpack.hot-update.json 500 in 17710ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /?agentConfig=SingleInterface 500 in 1383ms
+ GET /?agentConfig=SingleInterface 500 in 114ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 500 in 73ms
+ ✓ Compiled /_error in 8.4s (2165 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /_next/static/webpack/e75453f00d4cb2b6.webpack.hot-update.json 404 in 794ms
+ GET /?agentConfig=SingleInterface 200 in 712ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 612ms
+ GET / 200 in 559ms
+ ✓ Compiled in 31.8s (2161 modules)
+ GET /?agentConfig=SingleInterface 200 in 1128ms

@@ -23,6 +23,7 @@ import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 import { useDataCollection } from "./contexts/DataCollectionContext";
 import { useSalesData } from "./contexts/SalesDataContext";
+import { useConsultationData } from "./contexts/ConsultationDataContext";
 
 // Agent configs
 import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
@@ -79,14 +80,19 @@ function App() {
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("DISCONNECTED");
 
   const { preferredLanguage, setPreferredLanguage } = useLanguage();
-  const { captureDataPoint } = useDataCollection();
-  const { 
-    captureSalesData, 
-    verifySalesData, 
-    captureAllSalesData, 
-    pushToLMS, 
-    downloadSalesData 
+    const { captureDataPoint } = useDataCollection();
+  const {
+    captureSalesData,
+    verifySalesData,
+    captureAllSalesData,
+    pushToLMS,
+    downloadSalesData
   } = useSalesData();
+  const {
+    captureConsultationData,
+    verifyConsultationData,
+    downloadConsultationData
+  } = useConsultationData();
 
   // Codec selector – lets you toggle between wide-band Opus (48 kHz)
   // and narrow-band PCMU/PCMA (8 kHz) to hear what the agent sounds like on
@@ -242,18 +248,21 @@ function App() {
           initialAgents: reorderedAgents,
           audioElement: sdkAudioElement,
           outputGuardrails: [guardrail],
-          extraContext: {
-            addTranscriptBreadcrumb,
-            preferredLanguage: preferredLanguage,
-            captureDataPoint,
-            disconnectSession: disconnectFromRealtime,
-            // Sales data functions for Spotlight agent
-            captureSalesData,
-            verifySalesData,
-            captureAllSalesData,
-            pushToLMS,
-            downloadSalesData,
-          },
+                  extraContext: {
+          addTranscriptBreadcrumb,
+          preferredLanguage: preferredLanguage,
+          captureDataPoint,
+          disconnectSession: disconnectFromRealtime,
+          // Sales data functions for Spotlight agent
+          captureSalesData,
+          verifySalesData,
+          captureAllSalesData,
+          pushToLMS,
+          downloadSalesData,
+          // Consultation data functions for Car Dealer agent
+          captureConsultationData,
+          verifyConsultationData,
+        },
         });
         
         console.log(`[DEBUG] Connected with language preference: ${preferredLanguage}`);
@@ -452,10 +461,21 @@ function App() {
   }, [sessionStatus, isAudioPlaybackEnabled]);
 
   useEffect(() => {
-    if (sessionStatus === "CONNECTED" && audioElementRef.current?.srcObject) {
-      // The remote audio stream from the audio element.
-      const remoteStream = audioElementRef.current.srcObject as MediaStream;
-      startRecording(remoteStream);
+    if (sessionStatus === "CONNECTED") {
+      console.log('[Audio Debug] Session connected, checking audio element:', audioElementRef.current);
+      console.log('[Audio Debug] Audio element srcObject:', audioElementRef.current?.srcObject);
+      
+      if (audioElementRef.current?.srcObject) {
+        // The remote audio stream from the audio element.
+        const remoteStream = audioElementRef.current.srcObject as MediaStream;
+        console.log('[Audio Debug] Starting recording with remote stream:', remoteStream);
+        startRecording(remoteStream);
+      } else {
+        console.warn('[Audio Debug] No srcObject found on audio element, trying alternative approach');
+        // Try to start recording without remote stream (microphone only)
+        const emptyStream = new MediaStream();
+        startRecording(emptyStream);
+      }
     }
 
     // Clean up on unmount or when sessionStatus is updated.

@@ -1,4 +1,4 @@
-import { RealtimeAgent } from '@openai/agents/realtime';
+import { RealtimeAgent, tool } from '@openai/agents/realtime';
 
 export const carDealerAgent = new RealtimeAgent({
   name: 'carDealer',
@@ -98,6 +98,25 @@ You: "I specialize exclusively in [YOUR_BRAND] vehicles, so I can't provide deta
 Customer: "How does this compare to BMW?"
 You: "While I focus exclusively on [YOUR_BRAND] vehicles and can't provide BMW specifics, I can tell you that our [MODEL] offers exceptional value, reliability, and features that many customers find superior. Let me highlight what makes [YOUR_BRAND] special and why customers choose us over luxury brands..."
 
+# Data Collection During Consultation
+As you engage with customers, capture important consultation data points using the provided tools:
+
+## Key Data Points to Capture:
+1. **Budget Range** - Customer's price range or budget constraints
+2. **Timeline** - When they plan to purchase (immediate, 3 months, 6 months, etc.)
+3. **Usage Type** - How they'll use the vehicle (city driving, long trips, family use, etc.)
+4. **Financing Preference** - Cash purchase, loan, lease, or needs guidance
+5. **Test Drive Interest** - Whether they want to schedule a test drive
+6. **Preferred Features** - Specific features they value (safety, technology, fuel efficiency, etc.)
+7. **Contact Preference** - Best way and time to follow up
+
+## Data Capture Protocol:
+- Use capture_consultation_data tool whenever customer shares relevant information
+- Listen for natural mentions of budget, timeline, preferences, etc.
+- Don't interrupt the flow - capture data when contextually appropriate
+- Verify important information using verify_consultation_data tool
+- Focus on quality conversation while systematically gathering insights
+
 # Important Guidelines
 - Always maintain enthusiasm for your specific brand
 - Provide detailed, knowledgeable responses about your brand only
@@ -105,10 +124,87 @@ You: "While I focus exclusively on [YOUR_BRAND] vehicles and can't provide BMW s
 - Use customer's name and reference their specific model interest
 - Focus on helping them with their [CAR_BRAND] decision
 - Be confident about your brand's strengths and value proposition
+- Naturally capture consultation data throughout the conversation
 
-Remember: You are a dedicated [CAR_BRAND] dealer who lives and breathes your brand. Your expertise is deep but focused, and your goal is to help customers understand why your brand is the perfect choice for them.
+Remember: You are a dedicated [CAR_BRAND] dealer who lives and breathes your brand. Your expertise is deep but focused, and your goal is to help customers understand why your brand is the perfect choice for them while gathering valuable insights for follow-up.
 `,
 
-  // No specific tools needed for dealer agent - standard conversation
-  tools: [],
+  tools: [
+    tool({
+      name: "capture_consultation_data",
+      description: "Capture relevant customer consultation data points during car dealer conversation",
+      parameters: {
+        type: "object",
+        properties: {
+          data_type: {
+            type: "string",
+            enum: ["budget_range", "timeline", "usage_type", "financing_preference", "test_drive_interest", "preferred_features", "contact_preference"],
+            description: "Type of consultation data being captured"
+          },
+          value: {
+            type: "string",
+            description: "The value/information provided by the customer"
+          }
+        },
+        required: ["data_type", "value"],
+        additionalProperties: false,
+      },
+      execute: async (input, details) => {
+        console.log(`[Car Dealer Data] ${input.data_type}: ${input.value}`);
+        
+        const context = details?.context as any;
+        if (context?.captureConsultationData) {
+          context.captureConsultationData(input.data_type, input.value);
+          return { 
+            success: true, 
+            message: `Captured ${input.data_type}: ${input.value}` 
+          };
+        } else {
+          console.warn('[Car Dealer] Capture function not available');
+          return { 
+            success: false, 
+            message: "Data capture function not available" 
+          };
+        }
+      },
+    }),
+
+    tool({
+      name: "verify_consultation_data",
+      description: "Verify captured consultation data with customer",
+      parameters: {
+        type: "object", 
+        properties: {
+          data_type: {
+            type: "string",
+            enum: ["budget_range", "timeline", "usage_type", "financing_preference", "test_drive_interest", "preferred_features", "contact_preference"],
+            description: "Type of data to verify"
+          },
+          confirmed: {
+            type: "boolean",
+            description: "Whether the customer confirmed the data"
+          }
+        },
+        required: ["data_type", "confirmed"],
+        additionalProperties: false,
+      },
+      execute: async (input, details) => {
+        console.log(`[Car Dealer Verify] ${input.data_type}: ${input.confirmed ? 'Confirmed' : 'Rejected'}`);
+        
+        const context = details?.context as any;
+        if (context?.verifyConsultationData) {
+          context.verifyConsultationData(input.data_type, input.confirmed);
+          return { 
+            success: true, 
+            message: `${input.data_type} ${input.confirmed ? 'confirmed' : 'needs correction'}` 
+          };
+        } else {
+          return { 
+            success: false, 
+            message: "Verification function not available" 
+          };
+        }
+      },
+    }),
+  ],
 });
