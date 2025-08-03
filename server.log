@@ -91,3 +91,51 @@
  ✓ Compiled in 2.2s (1825 modules)
  GET /?agentConfig=SingleInterface 200 in 95ms
  GET / 200 in 490ms
+ ✓ Compiled in 993ms (1825 modules)
+ GET /?agentConfig=SingleInterface 200 in 92ms
+ GET /?agentConfig=SingleInterface 200 in 994ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1003ms (1815 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 1114ms
+ GET /?agentConfig=SingleInterface 200 in 1238ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 76ms
+ ○ Compiling /api/session ...
+ ✓ Compiled /api/session in 2.8s (1029 modules)
+ GET /api/session 200 in 5219ms
+ ○ Compiling /api/responses ...
+ ✓ Compiled /api/responses in 5.7s (1156 modules)
+ POST /api/responses 200 in 7613ms
+ POST /api/responses 200 in 11934ms
+ POST /api/responses 200 in 11998ms
+ POST /api/responses 200 in 8856ms
+ POST /api/responses 200 in 1690ms
+ POST /api/responses 200 in 1805ms
+ POST /api/responses 200 in 2058ms
+ POST /api/responses 200 in 1906ms
+ POST /api/responses 200 in 2535ms
+ POST /api/responses 200 in 1899ms
+ POST /api/responses 200 in 2205ms
+ POST /api/responses 200 in 1693ms
+ POST /api/responses 200 in 1803ms
+ POST /api/responses 200 in 2481ms
+ POST /api/responses 200 in 2705ms
+ POST /api/responses 200 in 2060ms
+ POST /api/responses 200 in 2287ms
+ POST /api/responses 200 in 1638ms
+ POST /api/responses 200 in 1788ms
+ POST /api/responses 200 in 2169ms
+ GET /?agentConfig=SingleInterface 200 in 779ms
+ POST /api/responses 200 in 4047ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1033ms (1958 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 1219ms
+(node:24224) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 unhandledRejection listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+ GET / 200 in 1414ms
+ ✓ Compiled in 4.1s (1825 modules)
+ GET /?agentConfig=SingleInterface 200 in 349ms
+ ✓ Compiled in 706ms (1825 modules)
+ GET /?agentConfig=SingleInterface 200 in 50ms
+ ✓ Compiled in 750ms (1825 modules)
+ GET /?agentConfig=SingleInterface 200 in 35ms
+ GET / 200 in 342ms
