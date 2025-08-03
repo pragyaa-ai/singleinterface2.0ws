@@ -415,9 +415,12 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
         additionalProperties: false,
       },
       execute: async (input, details) => {
+        console.log(`[DEBUG] verify_captured_data called with:`, input);
         const typedInput = input as { data_type: string; confirmed_value: string };
         const context = details?.context as any;
+        console.log(`[DEBUG] Context available:`, !!context?.captureDataPoint);
         if (context?.captureDataPoint) {
+          console.log(`[DEBUG] Calling captureDataPoint with: dataType=${typedInput.data_type}, value=${typedInput.confirmed_value}, status=verified`);
           context.captureDataPoint(typedInput.data_type, typedInput.confirmed_value, 'verified');
           console.log(`[Agent Data Verification] Verified ${typedInput.data_type}: ${typedInput.confirmed_value}`);
           return { 
@@ -428,6 +431,7 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
             status: 'verified'
           };
         } else {
+          console.error(`[DEBUG] Context not available:`, context);
           return { 
             success: false, 
             message: "Data collection context not available" 
