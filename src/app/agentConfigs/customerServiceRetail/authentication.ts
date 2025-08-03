@@ -415,8 +415,10 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
         additionalProperties: false,
       },
       execute: async (input, details) => {
+        console.log('[VERIFY DEBUG] Tool called with input:', input);
         const typedInput = input as { data_type: string; confirmed_value: string };
         const context = details?.context as any;
+        console.log('[VERIFY DEBUG] Context available:', !!context?.captureDataPoint);
         if (context?.captureDataPoint) {
           context.captureDataPoint(typedInput.data_type, typedInput.confirmed_value, 'verified');
           console.log(`[Agent Data Verification] Verified ${typedInput.data_type}: ${typedInput.confirmed_value}`);
@@ -428,6 +430,7 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
             status: 'verified'
           };
         } else {
+          console.error('[VERIFY DEBUG] Context not available or missing captureDataPoint');
           return { 
             success: false, 
             message: "Data collection context not available" 
