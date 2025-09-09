@@ -9,7 +9,7 @@ echo "🚀 Starting deployment of SingleInterface Voice Agent..."
 # Configuration - update these before running
 DOMAIN_APP="app.yourdomain.com"
 DOMAIN_WS="ws.yourdomain.com"
-GITHUB_REPO="https://github.com/your-username/singleinterfaceVoiceAgent2.0.git"
+GITHUB_REPO="https://github.com/pragyaa-ai/singleinterface2.0ws.git"
 BRANCH="main"
 APP_DIR="/opt/voiceagent"
 OPENAI_API_KEY="${OPENAI_API_KEY:-YOUR_OPENAI_KEY_HERE}"
