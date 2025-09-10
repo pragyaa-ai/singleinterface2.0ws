@@ -2,7 +2,11 @@ import 'dotenv/config';
 import http from 'http';
 import WebSocket, { WebSocketServer } from 'ws';
 import { int16ArrayToBase64, ensureInt16Array } from './audio';
-import { OpenAIRealtimeWSClient } from './openaiRealtime';
+import { RealtimeSession, OpenAIRealtimeWebRTC } from '@openai/agents/realtime';
+
+// Import your existing agents
+import { spotlightAgent } from '../../app/agentConfigs/customerServiceRetail/spotlight';
+import { createModerationGuardrail } from '../../app/agentConfigs/guardrails';
 
 interface OzonetelMediaPacket {
   event: string;
@@ -21,7 +25,7 @@ interface OzonetelMediaPacket {
 interface Session {
   ucid: string;
   client: WebSocket;
-  openai: OpenAIRealtimeWSClient;
+  realtimeSession: RealtimeSession;
   receivedFirstPacket: boolean;
   inputFrameBuffer: number[][]; // queue of sample arrays
 }
@@ -34,10 +38,76 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 
 const sessions = new Map<string, Session>();
 
-function createOpenAIClient() {
+async function createRealtimeSession(ucid: string): Promise<RealtimeSession> {
   const apiKey = process.env.OPENAI_API_KEY as string;
   if (!apiKey) throw new Error('OPENAI_API_KEY not set');
-  return new OpenAIRealtimeWSClient({ apiKey, inputSampleRate: 8000, outputSampleRate: 8000 });
+
+  // Create guardrail
+  const guardrail = createModerationGuardrail('Single Interface');
+
+  // Create session with Spotlight agent as root
+  const session = new RealtimeSession(spotlightAgent, {
+    transport: new OpenAIRealtimeWebRTC({
+      // No audio element needed for server-side
+    }),
+    model: 'gpt-4o-realtime-preview-2025-06-03',
+    config: {
+      inputAudioFormat: {
+        type: 'pcm16',
+        channels: 1,
+        sample_rate_hz: 8000,
+      },
+      outputAudioFormat: {
+        type: 'pcm16', 
+        channels: 1,
+        sample_rate_hz: 8000,
+      },
+      inputAudioTranscription: {
+        model: 'whisper-1',
+      },
+      turn_detection: {
+        type: 'server_vad',
+        threshold: 0.5,
+        prefix_padding_ms: 300,
+        silence_duration_ms: 500,
+        create_response: true,
+      },
+    },
+    outputGuardrails: [guardrail],
+    context: {
+      preferredLanguage: 'English',
+      // Sales data functions for Spotlight agent
+      captureSalesData: (type: string, value: string, notes?: string) => {
+        console.log(`[${ucid}] Sales data captured: ${type} = ${value}`);
+        return { success: true, message: `Captured ${type}: ${value}` };
+      },
+      verifySalesData: (type: string, confirmed: boolean) => {
+        console.log(`[${ucid}] Sales data verified: ${type} = ${confirmed}`);
+        return { success: true, message: `Verified ${type}` };
+      },
+      captureAllSalesData: (data: Record<string, string>) => {
+        console.log(`[${ucid}] All sales data captured:`, data);
+        return { success: true, message: "All sales data captured successfully" };
+      },
+      pushToLMS: (data: Record<string, string>) => {
+        console.log(`[${ucid}] Pushing to LMS:`, data);
+        return { success: true, message: "Sales data successfully pushed to SingleInterface LMS" };
+      },
+      downloadSalesData: (format: string) => {
+        console.log(`[${ucid}] Download request: ${format}`);
+        return { success: true, message: `Sales data prepared in ${format} format` };
+      },
+      disconnectSession: () => {
+        console.log(`[${ucid}] Session disconnect requested`);
+        // Will be handled by the session cleanup
+      },
+    },
+  });
+
+  await session.connect({ apiKey });
+  console.log(`[${ucid}] Connected to OpenAI Realtime with Spotlight agent`);
+  
+  return session;
 }
 
 async function handleConnection(ws: WebSocket) {
@@ -64,43 +134,65 @@ async function handleConnection(ws: WebSocket) {
       // From here, msg is OzonetelMediaPacket
       if (msg.event === 'start') {
         ucid = msg.ucid || '';
-        const openai = createOpenAIClient();
-        await openai.connect();
-        session = {
-          ucid,
-          client: ws,
-          openai,
-          receivedFirstPacket: false,
-          inputFrameBuffer: [],
-        };
-        sessions.set(ucid, session);
+        try {
+          const realtimeSession = await createRealtimeSession(ucid);
+          session = {
+            ucid,
+            client: ws,
+            realtimeSession,
+            receivedFirstPacket: false,
+            inputFrameBuffer: [],
+          };
+          sessions.set(ucid, session);
 
-        // Forward OpenAI audio responses back to Ozonetel as PCM16 frames
-        openai.onMessage((evt) => {
-          try {
-            if (evt.type === 'response.output_audio.delta' && evt.audio) {
-              // evt.audio is base64; decode to Int16 if necessary
-              const b64 = evt.audio as string;
-              const buf = Buffer.from(b64, 'base64');
-              const int16 = new Int16Array(buf.buffer, buf.byteOffset, buf.byteLength / 2);
-              const numberOfFrames = int16.length;
-              const payload = {
-                event: 'media',
-                type: 'media',
-                ucid: ucid,
-                data: {
-                  samples: Array.from(int16),
-                  bitsPerSample: 16,
-                  sampleRate: 8000,
-                  channelCount: 1,
-                  numberOfFrames,
-                  type: 'data' as const,
-                },
-              };
-              if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
+          // Handle responses from the Spotlight agent
+          realtimeSession.on('response.output_audio.delta', (event: any) => {
+            try {
+              if (event.audio) {
+                // Convert base64 to samples
+                const audioBuffer = Buffer.from(event.audio, 'base64');
+                const samples = Array.from(new Int16Array(audioBuffer.buffer));
+                
+                const payload = {
+                  event: 'media',
+                  type: 'media',
+                  ucid: ucid,
+                  data: {
+                    samples: samples,
+                    bitsPerSample: 16,
+                    sampleRate: 8000,
+                    channelCount: 1,
+                    numberOfFrames: samples.length,
+                    type: 'data' as const,
+                  },
+                };
+                
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify(payload));
+                }
+              }
+            } catch (err) {
+              console.error(`[${ucid}] Audio response error:`, err);
             }
-          } catch {}
-        });
+          });
+
+          // Handle agent handoffs
+          realtimeSession.on('agent_handoff', (handoffEvent: any) => {
+            console.log(`[${ucid}] Agent handoff to:`, handoffEvent.agentName);
+          });
+
+          // Handle tool calls
+          realtimeSession.on('agent_tool_start', (toolEvent: any) => {
+            console.log(`[${ucid}] Tool call started:`, toolEvent.tool?.name);
+          });
+
+          realtimeSession.on('agent_tool_end', (toolEvent: any) => {
+            console.log(`[${ucid}] Tool call completed:`, toolEvent.tool?.name);
+          });
+
+        } catch (err) {
+          console.error(`[${ucid}] Failed to create Realtime session:`, err);
+        }
         return;
       }
 
@@ -116,16 +208,27 @@ async function handleConnection(ws: WebSocket) {
         // Expect 8k mono 10ms frames (80 samples)
         const samples = ensureInt16Array(msg.data.samples);
         const b64 = int16ArrayToBase64(samples);
-        session.openai.sendAudioChunkBase64(b64);
 
-        // Commit periodically — here we commit each frame for simplicity
-        session.openai.commitInput();
+        // Send to Realtime session
+        session.realtimeSession.transport.sendEvent({
+          type: 'input_audio_buffer.append',
+          audio: b64,
+        });
+
+        // Commit and trigger response
+        session.realtimeSession.transport.sendEvent({
+          type: 'input_audio_buffer.commit',
+        });
+
+        session.realtimeSession.transport.sendEvent({
+          type: 'response.create',
+        });
         return;
       }
 
       if (msg.event === 'stop') {
         if (session) {
-          session.openai.close();
+          session.realtimeSession.close();
           sessions.delete(session.ucid);
         }
         if (ws.readyState === WebSocket.OPEN) ws.close();
@@ -138,7 +241,7 @@ async function handleConnection(ws: WebSocket) {
 
   ws.on('close', () => {
     if (session) {
-      session.openai.close();
+      session.realtimeSession.close();
       sessions.delete(session.ucid);
     }
   });
@@ -147,7 +250,7 @@ async function handleConnection(ws: WebSocket) {
 wss.on('connection', handleConnection);
 
 server.listen(port, host, () => {
-  console.log(`[telephony] WebSocket server listening on ws://${host}:${port}/ws`);
+  console.log(`[telephony] WebSocket server with Spotlight agent listening on ws://${host}:${port}/ws`);
 });
 
 
