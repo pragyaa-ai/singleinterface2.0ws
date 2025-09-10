@@ -57,7 +57,7 @@ async function createRealtimeSession(ucid: string): Promise<RealtimeSession> {
       inputAudioTranscription: {
         model: 'whisper-1',
       },
-      turn_detection: {
+      turnDetection: {
         type: 'server_vad',
         threshold: 0.5,
         prefix_padding_ms: 300,
@@ -138,11 +138,11 @@ async function handleConnection(ws: WebSocket) {
           sessions.set(ucid, session);
 
           // Handle responses from the Spotlight agent
-          realtimeSession.on('response.audio.delta', (event: any) => {
+          realtimeSession.on('transport_event' as any, (event: any) => {
             try {
-              if (event.audio) {
+              if (event.type === 'response.audio.delta' && event.delta) {
                 // Convert base64 to samples
-                const audioBuffer = Buffer.from(event.audio, 'base64');
+                const audioBuffer = Buffer.from(event.delta, 'base64');
                 const samples = Array.from(new Int16Array(audioBuffer.buffer));
                 
                 const payload = {
