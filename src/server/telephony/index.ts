@@ -52,16 +52,8 @@ async function createRealtimeSession(ucid: string): Promise<RealtimeSession> {
     }),
     model: 'gpt-4o-realtime-preview-2025-06-03',
     config: {
-      inputAudioFormat: {
-        type: 'pcm16',
-        channels: 1,
-        sample_rate_hz: 8000,
-      },
-      outputAudioFormat: {
-        type: 'pcm16', 
-        channels: 1,
-        sample_rate_hz: 8000,
-      },
+      inputAudioFormat: 'pcm16',
+      outputAudioFormat: 'pcm16',
       inputAudioTranscription: {
         model: 'whisper-1',
       },
@@ -123,9 +115,9 @@ async function handleConnection(ws: WebSocket) {
         if (!session) return;
         const cmd = msg.command;
         if (cmd === 'clearBuffer') {
-          session.openai.clearInput();
+          session.realtimeSession.transport.sendEvent({ type: 'input_audio_buffer.clear' });
         } else if (cmd === 'callDisconnect') {
-          session.openai.close();
+          session.realtimeSession.close();
           ws.close();
         }
         return;
@@ -146,7 +138,7 @@ async function handleConnection(ws: WebSocket) {
           sessions.set(ucid, session);
 
           // Handle responses from the Spotlight agent
-          realtimeSession.on('response.output_audio.delta', (event: any) => {
+          realtimeSession.on('response.audio.delta', (event: any) => {
             try {
               if (event.audio) {
                 // Convert base64 to samples
