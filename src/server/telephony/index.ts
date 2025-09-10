@@ -312,8 +312,10 @@ async function handleConnection(ws: WebSocket) {
                 const transcript = event.item?.content?.[0]?.transcript || '';
                 console.log(`[${ucid}] User said:`, transcript);
                 
-                // Auto-extract data from user speech
-                extractSalesData(session, transcript);
+                // Auto-extract data from user speech (ensure session exists)
+                if (session) {
+                  extractSalesData(session, transcript);
+                }
               }
               
               if (event.type === 'response.text.done') {
