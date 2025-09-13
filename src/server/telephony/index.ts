@@ -162,7 +162,7 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
             type: 'server_vad',
             threshold: 0.5,
             prefix_padding_ms: 300,
-            silence_duration_ms: 500
+            silence_duration_ms: 1000  // Wait 1 second of silence before responding
           },
           instructions: `# Personality and Tone
 ## Identity
@@ -206,10 +206,16 @@ You: "I've recorded your name as Rajesh Kumar. Is this correct?"
 - Do not get stuck on any single data point for more than 2 attempts
 
 # Conversation Flow
-1. **Opening**: Greet and explain your automotive sales assistance purpose
-2. **Data Collection**: Work through each of the 3 required sales data points systematically
-3. **Verification**: Use the mandatory confirmation protocol for each data point
+1. **Opening**: Greet and explain your automotive sales assistance purpose, then WAIT for user response
+2. **Data Collection**: Ask for ONE data point at a time, then WAIT for user response
+3. **Verification**: Use the mandatory confirmation protocol for each data point, WAIT for confirmation
 4. **Completion**: Once all data is collected and verified, thank the user and connect them with car brand dealer
+
+# CRITICAL: WAIT FOR USER RESPONSES
+- Ask ONE question at a time
+- ALWAYS wait for the user to respond before asking the next question
+- Do NOT speak continuously or ask multiple questions in sequence
+- Listen carefully to user responses before proceeding
 
 # Important Guidelines
 - Always maintain the confirmation protocol - never skip the verification step
@@ -359,14 +365,8 @@ async function handleConnection(ws: WebSocket) {
           audio: b64,
         }));
 
-        // Commit and trigger response
-        session.openaiWs.send(JSON.stringify({
-          type: 'input_audio_buffer.commit',
-        }));
-
-        session.openaiWs.send(JSON.stringify({
-          type: 'response.create',
-        }));
+        // Let OpenAI's server_vad handle turn detection automatically
+        // Do NOT force response.create - let VAD detect when user stops speaking
         return;
       }
 
