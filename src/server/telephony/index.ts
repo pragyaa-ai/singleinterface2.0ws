@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import http from 'http';
 import WebSocket, { WebSocketServer } from 'ws';
+import fs from 'fs';
+import path from 'path';
 import { int16ArrayToBase64, ensureInt16Array, upsample8kTo24k, downsample24kTo8k } from './audio';
 
 interface OzonetelMediaPacket {
@@ -38,6 +40,12 @@ const server = http.createServer();
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 const sessions = new Map<string, Session>();
+
+// Ensure data directory exists
+const dataDir = path.join(process.cwd(), 'data', 'calls');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
 
 // Data extraction function to simulate Spotlight agent tools
 function extractSalesData(session: Session, transcript: string) {
@@ -115,6 +123,32 @@ function extractSalesData(session: Session, transcript: string) {
   checkDataCompletion(session);
 }
 
+// Save sales data to local file
+function saveSalesDataToFile(session: Session) {
+  const { full_name, car_model, email_id } = session.salesData;
+  const ucid = session.ucid;
+  
+  const callData = {
+    ucid: ucid,
+    timestamp: new Date().toISOString(),
+    full_name: full_name || 'Not captured',
+    car_model: car_model || 'Not captured', 
+    email_id: email_id || 'Not captured',
+    status: (full_name && car_model && email_id) ? 'Complete' : 'Partial',
+    call_duration: Date.now() // Will be updated when call ends
+  };
+  
+  const filename = `call_${ucid}_${Date.now()}.json`;
+  const filepath = path.join(dataDir, filename);
+  
+  try {
+    fs.writeFileSync(filepath, JSON.stringify(callData, null, 2));
+    console.log(`[${ucid}] 💾 Sales data saved to: ${filename}`);
+  } catch (error) {
+    console.error(`[${ucid}] ❌ Failed to save data:`, error);
+  }
+}
+
 // Check if all required data is collected
 function checkDataCompletion(session: Session) {
   const { full_name, car_model, email_id } = session.salesData;
@@ -126,6 +160,9 @@ function checkDataCompletion(session: Session) {
     console.log(`[${ucid}]   Name: ${full_name}`);
     console.log(`[${ucid}]   Car: ${car_model}`);
     console.log(`[${ucid}]   Email: ${email_id}`);
+    
+    // Save complete data to file
+    saveSalesDataToFile(session);
     
     // Simulate push to LMS
     console.log(`[${ucid}] 🚀 Pushing to SingleInterface LMS...`);
@@ -372,6 +409,13 @@ async function handleConnection(ws: WebSocket) {
 
       if (msg.event === 'stop') {
         if (session) {
+          // Save any partial data collected before call ends
+          const { full_name, car_model, email_id } = session.salesData;
+          if (full_name || car_model || email_id) {
+            console.log(`[${session.ucid}] 📋 Call ended - saving partial data`);
+            saveSalesDataToFile(session);
+          }
+          
           session.openaiWs.close();
           sessions.delete(session.ucid);
         }
@@ -385,6 +429,13 @@ async function handleConnection(ws: WebSocket) {
 
   ws.on('close', () => {
     if (session) {
+      // Save any partial data collected before connection closes
+      const { full_name, car_model, email_id } = session.salesData;
+      if (full_name || car_model || email_id) {
+        console.log(`[${session.ucid}] 🔌 Connection closed - saving partial data`);
+        saveSalesDataToFile(session);
+      }
+      
       session.openaiWs.close();
       sessions.delete(session.ucid);
     }
