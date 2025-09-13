@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import http from 'http';
 import WebSocket, { WebSocketServer } from 'ws';
-import { int16ArrayToBase64, ensureInt16Array } from './audio';
+import { int16ArrayToBase64, ensureInt16Array, upsample8kTo24k, downsample24kTo8k } from './audio';
 
 interface OzonetelMediaPacket {
   event: string;
@@ -284,20 +284,24 @@ async function handleConnection(ws: WebSocket) {
               const event = JSON.parse(data.toString());
               
               if (event.type === 'response.audio.delta' && event.delta) {
-                // Convert base64 to samples for Ozonetel
+                // Convert base64 to samples and downsample from 24kHz to 8kHz for Ozonetel
                 const audioBuffer = Buffer.from(event.delta, 'base64');
-                const samples = Array.from(new Int16Array(audioBuffer.buffer));
+                const samples24k = new Int16Array(audioBuffer.buffer);
+                const samples8k = downsample24kTo8k(samples24k);
+                const samplesArray = Array.from(samples8k);
+                
+                console.log(`[${ucid}] Response: 24kHz (${samples24k.length}) → 8kHz (${samples8k.length}) samples`);
                 
                 const payload = {
                   event: 'media',
                   type: 'media',
                   ucid: ucid,
                   data: {
-                    samples: samples,
+                    samples: samplesArray,
                     bitsPerSample: 16,
                     sampleRate: 8000,
                     channelCount: 1,
-                    numberOfFrames: samples.length,
+                    numberOfFrames: samplesArray.length,
                     type: 'data' as const,
                   },
                 };
@@ -342,11 +346,14 @@ async function handleConnection(ws: WebSocket) {
           return;
         }
 
-        // Expect 8k mono 10ms frames (80 samples)
-        const samples = ensureInt16Array(msg.data.samples);
-        const b64 = int16ArrayToBase64(samples);
+        // Expect 8k mono 10ms frames (80 samples) - upsample to 24k for OpenAI
+        const samples8k = ensureInt16Array(msg.data.samples);
+        const samples24k = upsample8kTo24k(samples8k);
+        const b64 = int16ArrayToBase64(samples24k);
 
-        // Send to OpenAI Realtime
+        console.log(`[${ucid}] Audio: 8kHz (${samples8k.length}) → 24kHz (${samples24k.length}) samples`);
+
+        // Send upsampled 24kHz audio to OpenAI Realtime
         session.openaiWs.send(JSON.stringify({
           type: 'input_audio_buffer.append',
           audio: b64,
