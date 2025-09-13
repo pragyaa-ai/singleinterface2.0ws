@@ -47,7 +47,166 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Data extraction function to simulate Spotlight agent tools
+// 🎯 AGENTS SDK TOOLS - Ported for telephony use
+const telephonySDKTools = [
+  {
+    type: "function" as const,
+    name: "capture_sales_data",
+    description: "Capture and store individual pieces of sales lead information during the verification process",
+    parameters: {
+      type: "object",
+      properties: {
+        data_type: {
+          type: "string",
+          enum: ["full_name", "car_model", "email_id"],
+          description: "The type of sales data being captured"
+        },
+        value: {
+          type: "string", 
+          description: "The actual data value provided by the customer"
+        },
+        notes: {
+          type: "string",
+          description: "Any additional notes or context about this data point"
+        }
+      },
+      required: ["data_type", "value"],
+      additionalProperties: false,
+    }
+  },
+  {
+    type: "function" as const,
+    name: "verify_sales_data",
+    description: "Verify and confirm previously captured sales data with the customer",
+    parameters: {
+      type: "object",
+      properties: {
+        data_type: {
+          type: "string",
+          enum: ["full_name", "car_model", "email_id"],
+          description: "The type of sales data being verified"
+        },
+        confirmed: {
+          type: "boolean",
+          description: "Whether the customer confirmed this data as correct"
+        }
+      },
+      required: ["data_type", "confirmed"],
+      additionalProperties: false,
+    }
+  },
+  {
+    type: "function" as const,
+    name: "capture_all_sales_data",
+    description: "Capture all sales data at once when conversation is complete",
+    parameters: {
+      type: "object",
+      properties: {
+        full_name: { type: "string", description: "Complete name of the potential customer" },
+        car_model: { type: "string", description: "Specific car model they are interested in" },
+        email_id: { type: "string", description: "Customer's email address for follow-up" }
+      },
+      required: ["full_name", "car_model", "email_id"],
+      additionalProperties: false,
+    }
+  }
+];
+
+// 🎯 SDK TOOL EXECUTION HANDLERS
+function handleSDKToolCall(session: Session, toolCall: any) {
+  const ucid = session.ucid;
+  const { name, parameters } = toolCall;
+  
+  console.log(`[${ucid}] 🔧 SDK Tool Called: ${name}`, parameters);
+  
+  switch (name) {
+    case 'capture_sales_data':
+      return handleCaptureSalesData(session, parameters);
+    case 'verify_sales_data':
+      return handleVerifySalesData(session, parameters);
+    case 'capture_all_sales_data':
+      return handleCaptureAllSalesData(session, parameters);
+    default:
+      console.warn(`[${ucid}] ❌ Unknown tool: ${name}`);
+      return { success: false, message: `Unknown tool: ${name}` };
+  }
+}
+
+function handleCaptureSalesData(session: Session, params: any) {
+  const { data_type, value, notes } = params;
+  const ucid = session.ucid;
+  
+  // 🎯 HYBRID APPROACH: Update session data (like current regex)
+  if (data_type === 'full_name') {
+    session.salesData.full_name = value;
+  } else if (data_type === 'car_model') {
+    session.salesData.car_model = value;
+  } else if (data_type === 'email_id') {
+    session.salesData.email_id = value;
+  }
+  
+  console.log(`[${ucid}] 🎯 SDK Captured ${data_type}: ${value}${notes ? ` (${notes})` : ''}`);
+  
+  // Check if data is complete and save
+  checkDataCompletion(session);
+  
+  return {
+    success: true,
+    message: `Successfully captured ${data_type}: ${value}`,
+    data_type,
+    value,
+    status: 'captured'
+  };
+}
+
+function handleVerifySalesData(session: Session, params: any) {
+  const { data_type, confirmed } = params;
+  const ucid = session.ucid;
+  
+  if (confirmed) {
+    session.salesData.verified.add(data_type);
+    console.log(`[${ucid}] ✅ SDK Verified ${data_type}: Confirmed`);
+  } else {
+    // If not confirmed, remove the data and allow re-capture
+    if (data_type === 'full_name') session.salesData.full_name = undefined;
+    if (data_type === 'car_model') session.salesData.car_model = undefined;
+    if (data_type === 'email_id') session.salesData.email_id = undefined;
+    session.salesData.verified.delete(data_type);
+    console.log(`[${ucid}] ❌ SDK Verification ${data_type}: Rejected - data cleared`);
+  }
+  
+  return {
+    success: true,
+    message: `${data_type} ${confirmed ? 'confirmed' : 'rejected'}`,
+    data_type,
+    confirmed,
+    status: confirmed ? 'verified' : 'rejected'
+  };
+}
+
+function handleCaptureAllSalesData(session: Session, params: any) {
+  const { full_name, car_model, email_id } = params;
+  const ucid = session.ucid;
+  
+  // Capture all data at once
+  session.salesData.full_name = full_name;
+  session.salesData.car_model = car_model;
+  session.salesData.email_id = email_id;
+  
+  console.log(`[${ucid}] 🎯 SDK Captured All Data:`, { full_name, car_model, email_id });
+  
+  // Save complete data
+  saveSalesDataToFile(session);
+  
+  return {
+    success: true,
+    message: "All sales data captured successfully",
+    data: { full_name, car_model, email_id },
+    status: 'complete'
+  };
+}
+
+// Data extraction function to simulate Spotlight agent tools (KEEP EXISTING - FALLBACK)
 function extractSalesData(session: Session, transcript: string) {
   const ucid = session.ucid;
   const text = transcript.toLowerCase();
@@ -192,7 +351,7 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
     openaiWs.on('open', () => {
       console.log(`[${ucid}] Connected to OpenAI Realtime API`);
       
-      // Configure session for Spotlight agent behavior
+      // Configure session for Spotlight agent behavior with SDK tools
       openaiWs.send(JSON.stringify({
         type: 'session.update',
         session: {
@@ -205,6 +364,7 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
             prefix_padding_ms: 300,
             silence_duration_ms: 1000  // Wait 1 second of silence before responding
           },
+          tools: telephonySDKTools,  // 🎯 ADD SDK TOOLS
           instructions: `# Personality and Tone
 ## Identity
 Speak in distinctly Indian English Accent. Always maintain female gender when replying. You are a professional, enthusiastic automotive sales assistant specializing in connecting potential car buyers with the right vehicles. You have extensive knowledge about various car models, features, and can guide customers through their car buying journey. Your expertise comes from years of helping customers find their perfect vehicle match.
@@ -230,21 +390,41 @@ You maintain a professional yet warm demeanor while being attentive to each cust
 
 ## CONFIRMATION PROTOCOL (MANDATORY)
 For EVERY piece of information you collect, you MUST follow this 3-step verification process:
-1. **Capture**: Store the information immediately
+1. **Capture**: Use the capture_sales_data tool to store the information immediately
 2. **Repeat**: Clearly repeat back what you captured to the user
 3. **Confirm**: Ask "Is this correct?" and wait for confirmation before proceeding
+4. **Verify**: Use the verify_sales_data tool with the customer's confirmation
 
 Example:
 User: "My name is Rajesh Kumar"
-You: "I've recorded your name as Rajesh Kumar. Is this correct?"
-*[wait for confirmation before moving to next data point]*
+You: *[use capture_sales_data tool with data_type: "full_name", value: "Rajesh Kumar"]*
+"I've recorded your name as Rajesh Kumar. Is this correct?"
+*[wait for confirmation]*
+User: "Yes, that's correct"
+You: *[use verify_sales_data tool with data_type: "full_name", confirmed: true]*
+"Perfect, thank you for confirming!"
 
 ## ESCALATION PROTOCOL (MANDATORY)
 - If a user provides unclear information or you cannot understand them after 2 attempts, you must:
   1. Politely say: "I want to make sure I get this information exactly right. Let me flag this for expert review."
-  2. Mark the field as "Requires Expert Review"
+  2. Use capture_sales_data tool with notes: "Requires Expert Review"
   3. Move on to the next data point
 - Do not get stuck on any single data point for more than 2 attempts
+
+# TOOLS AVAILABLE
+You have access to three powerful tools for data collection:
+
+1. **capture_sales_data**: Use this to capture individual data points
+   - Parameters: data_type ("full_name", "car_model", "email_id"), value, notes (optional)
+   - Use immediately when customer provides information
+
+2. **verify_sales_data**: Use this to confirm data with customer
+   - Parameters: data_type, confirmed (true/false)
+   - Use after customer confirms or rejects the captured data
+
+3. **capture_all_sales_data**: Use when all data is collected at once
+   - Parameters: full_name, car_model, email_id
+   - Use for bulk capture when conversation flows naturally
 
 # Conversation Flow
 1. **Opening**: Greet and explain your automotive sales assistance purpose, then WAIT for user response
@@ -398,6 +578,33 @@ async function handleConnection(ws: WebSocket) {
               
               if (event.type === 'conversation.item.input_audio_transcription.completed') {
                 console.log(`[${ucid}] 📝 Transcription completed:`, event.transcript);
+              }
+              
+              // 🎯 SDK TOOL CALLS - Handle function calls from AI
+              if (event.type === 'response.function_call_delta') {
+                console.log(`[${ucid}] 🔧 Function call delta:`, event);
+              }
+              
+              if (event.type === 'response.function_call_done') {
+                console.log(`[${ucid}] 🎯 Function call completed:`, event.call);
+                if (session && event.call) {
+                  const result = handleSDKToolCall(session, {
+                    name: event.call.name,
+                    parameters: JSON.parse(event.call.arguments || '{}')
+                  });
+                  
+                  // Send tool result back to OpenAI
+                  openaiWs.send(JSON.stringify({
+                    type: 'conversation.item.create',
+                    item: {
+                      type: 'function_call_output',
+                      call_id: event.call.id,
+                      output: JSON.stringify(result)
+                    }
+                  }));
+                  
+                  console.log(`[${ucid}] 📤 Tool result sent to OpenAI:`, result);
+                }
               }
 
             } catch (err) {
