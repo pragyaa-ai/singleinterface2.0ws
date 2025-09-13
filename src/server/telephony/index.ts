@@ -52,8 +52,12 @@ function extractSalesData(session: Session, transcript: string) {
   const ucid = session.ucid;
   const text = transcript.toLowerCase();
   
+  console.log(`[${ucid}] 🔍 Starting data extraction from: "${transcript}"`);
+  console.log(`[${ucid}] 🔍 Lowercase text: "${text}"`);
+  
   // Extract name patterns
   if (!session.salesData.full_name) {
+    console.log(`[${ucid}] 🔍 Attempting name extraction...`);
     const namePatterns = [
       /my name is ([a-zA-Z\s]+)/i,
       /i am ([a-zA-Z\s]+)/i,
@@ -326,6 +330,12 @@ async function handleConnection(ws: WebSocket) {
             try {
               const event = JSON.parse(data.toString());
               
+              // 🔍 DEBUG: Log ALL OpenAI events
+              console.log(`[${ucid}] 🔍 OpenAI Event:`, event.type);
+              if (event.type !== 'response.audio.delta') {
+                console.log(`[${ucid}] 📋 Event Details:`, JSON.stringify(event, null, 2));
+              }
+              
               if (event.type === 'response.audio.delta' && event.delta) {
                 // Convert base64 to samples and downsample from 24kHz to 8kHz for Ozonetel
                 const audioBuffer = Buffer.from(event.delta, 'base64');
@@ -333,7 +343,7 @@ async function handleConnection(ws: WebSocket) {
                 const samples8k = downsample24kTo8k(samples24k);
                 const samplesArray = Array.from(samples8k);
                 
-                console.log(`[${ucid}] Response: 24kHz (${samples24k.length}) → 8kHz (${samples8k.length}) samples`);
+                console.log(`[${ucid}] 🎵 Response: 24kHz (${samples24k.length}) → 8kHz (${samples8k.length}) samples`);
                 
                 const payload = {
                   event: 'media',
@@ -354,23 +364,44 @@ async function handleConnection(ws: WebSocket) {
                 }
               }
 
-              // Log important events and extract data
+              // 🔍 ENHANCED: Log ALL conversation events
               if (event.type === 'conversation.item.created') {
+                console.log(`[${ucid}] 🗣️ Conversation Item Created:`, JSON.stringify(event.item, null, 2));
                 const transcript = event.item?.content?.[0]?.transcript || '';
-                console.log(`[${ucid}] User said:`, transcript);
+                console.log(`[${ucid}] 📝 User said: "${transcript}"`);
                 
                 // Auto-extract data from user speech (ensure session exists)
-                if (session) {
+                if (session && transcript.trim()) {
+                  console.log(`[${ucid}] 🔍 Attempting data extraction from: "${transcript}"`);
                   extractSalesData(session, transcript);
+                } else if (!transcript.trim()) {
+                  console.log(`[${ucid}] ⚠️ Empty transcript received`);
                 }
               }
               
+              // 🔍 ENHANCED: Log response events
               if (event.type === 'response.text.done') {
-                console.log(`[${ucid}] Assistant response:`, event.text);
+                console.log(`[${ucid}] 🤖 Assistant response:`, event.text);
+              }
+              
+              if (event.type === 'response.text.delta') {
+                console.log(`[${ucid}] 🤖 Assistant text delta:`, event.delta);
+              }
+              
+              if (event.type === 'input_audio_buffer.speech_started') {
+                console.log(`[${ucid}] 🎤 Speech started detected`);
+              }
+              
+              if (event.type === 'input_audio_buffer.speech_stopped') {
+                console.log(`[${ucid}] 🛑 Speech stopped detected`);
+              }
+              
+              if (event.type === 'conversation.item.input_audio_transcription.completed') {
+                console.log(`[${ucid}] 📝 Transcription completed:`, event.transcript);
               }
 
             } catch (err) {
-              console.error(`[${ucid}] OpenAI message parse error:`, err);
+              console.error(`[${ucid}] ❌ OpenAI message parse error:`, err);
             }
           });
 
