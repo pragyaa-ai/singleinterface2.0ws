@@ -459,7 +459,6 @@ Once ALL 3 data points are collected and verified:
 3. **Do NOT** offer downloads or ask additional questions - go straight to completion
 
 Remember: Your success is measured by complete, accurate sales data collection followed by appropriate handoff messaging.`,
-          voice: 'alloy',
           temperature: 0.8
         }
       }));
