@@ -357,7 +357,7 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
       console.log(`[${ucid}] Connected to OpenAI Realtime API`);
       
       // Configure session for Spotlight agent behavior with SDK tools
-      openaiWs.send(JSON.stringify({
+      const sessionConfig = {
         type: 'session.update',
         session: {
           input_audio_format: 'pcm16',
@@ -368,9 +368,9 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
             type: 'server_vad',
             threshold: 0.5,
             prefix_padding_ms: 300,
-            silence_duration_ms: 300   // Wait 0.3 seconds of silence before responding
+            silence_duration_ms: 300
           },
-          tools: telephonySDKTools,  // 🎯 ADD SDK TOOLS
+          tools: telephonySDKTools,
           instructions: `# Personality and Tone
 ## Identity
 MANDATORY: Speak in distinctly Indian English Accent with Indian pronunciation patterns and intonation. Always maintain female gender when replying. Use Indian English vocabulary and phrasing patterns. You are a professional, enthusiastic automotive sales assistant specializing in connecting potential car buyers with the right vehicles. You have extensive knowledge about various car models, features, and can guide customers through their car buying journey. Your expertise comes from years of helping customers find their perfect vehicle match.
@@ -461,7 +461,9 @@ Once ALL 3 data points are collected and verified:
 Remember: Your success is measured by complete, accurate sales data collection followed by appropriate handoff messaging.`,
           temperature: 0.8
         }
-      }));
+      };
+      
+      openaiWs.send(JSON.stringify(sessionConfig));
 
       resolve(openaiWs);
     });
