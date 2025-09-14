@@ -510,10 +510,21 @@ async function handleConnection(ws: WebSocket) {
             try {
               const event = JSON.parse(data.toString());
               
-              // 🔍 DEBUG: Log ALL OpenAI events
-              console.log(`[${ucid}] 🔍 OpenAI Event:`, event.type);
-              if (event.type !== 'response.audio.delta') {
-                console.log(`[${ucid}] 📋 Event Details:`, JSON.stringify(event, null, 2));
+              // 🔍 DEBUG: Log important OpenAI events only
+              const importantEvents = [
+                'conversation.item.created',
+                'input_audio_buffer.speech_started', 
+                'input_audio_buffer.speech_stopped',
+                'conversation.item.input_audio_transcription.completed',
+                'response.function_call_delta',
+                'response.function_call_done'
+              ];
+              
+              if (importantEvents.includes(event.type)) {
+                console.log(`[${ucid}] 🔍 OpenAI Event:`, event.type);
+                if (event.type !== 'response.audio.delta') {
+                  console.log(`[${ucid}] 📋 Event Details:`, JSON.stringify(event, null, 2));
+                }
               }
               
               if (event.type === 'response.audio.delta' && event.delta) {
@@ -523,7 +534,7 @@ async function handleConnection(ws: WebSocket) {
                 const samples8k = downsample24kTo8k(samples24k);
                 const samplesArray = Array.from(samples8k);
                 
-                console.log(`[${ucid}] 🎵 Response: 24kHz (${samples24k.length}) → 8kHz (${samples8k.length}) samples`);
+                // console.log(`[${ucid}] 🎵 Response: 24kHz (${samples24k.length}) → 8kHz (${samples8k.length}) samples`); // DISABLED - too noisy
                 
                 const payload = {
                   event: 'media',
@@ -632,7 +643,7 @@ async function handleConnection(ws: WebSocket) {
         const samples24k = upsample8kTo24k(samples8k);
         const b64 = int16ArrayToBase64(samples24k);
 
-        console.log(`[${ucid}] Audio: 8kHz (${samples8k.length}) → 24kHz (${samples24k.length}) samples`);
+        // console.log(`[${ucid}] Audio: 8kHz (${samples8k.length}) → 24kHz (${samples24k.length}) samples`); // DISABLED - too noisy
 
         // Send upsampled 24kHz audio to OpenAI Realtime
         session.openaiWs.send(JSON.stringify({
