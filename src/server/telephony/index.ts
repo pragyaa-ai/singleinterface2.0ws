@@ -371,6 +371,7 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
             silence_duration_ms: 300
           },
           tools: telephonySDKTools,
+          temperature: 0.8,
           instructions: `# Personality and Tone
 ## Identity
 MANDATORY: Speak in distinctly Indian English Accent with Indian pronunciation patterns and intonation. Always maintain female gender when replying. Use Indian English vocabulary and phrasing patterns. You are a professional, enthusiastic automotive sales assistant specializing in connecting potential car buyers with the right vehicles. You have extensive knowledge about various car models, features, and can guide customers through their car buying journey. Your expertise comes from years of helping customers find their perfect vehicle match.
@@ -458,8 +459,7 @@ Once ALL 3 data points are collected and verified:
    - Extract the car brand from the car_model data point (e.g., "Toyota Camry" → "Toyota")
 3. **Do NOT** offer downloads or ask additional questions - go straight to completion
 
-Remember: Your success is measured by complete, accurate sales data collection followed by appropriate handoff messaging.`,
-          temperature: 0.8
+Remember: Your success is measured by complete, accurate sales data collection followed by appropriate handoff messaging.`
         }
       };
       
