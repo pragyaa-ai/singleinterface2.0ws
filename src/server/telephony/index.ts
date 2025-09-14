@@ -558,15 +558,58 @@ async function handleConnection(ws: WebSocket) {
               // 🔍 ENHANCED: Log ALL conversation events
               if (event.type === 'conversation.item.created') {
                 console.log(`[${ucid}] 🗣️ Conversation Item Created:`, JSON.stringify(event.item, null, 2));
-                const transcript = event.item?.content?.[0]?.transcript || '';
-                console.log(`[${ucid}] 📝 User said: "${transcript}"`);
                 
-                // Auto-extract data from user speech (ensure session exists)
-                if (session && transcript.trim()) {
-                  console.log(`[${ucid}] 🔍 Attempting data extraction from: "${transcript}"`);
-                  extractSalesData(session, transcript);
-                } else if (!transcript.trim()) {
-                  console.log(`[${ucid}] ⚠️ Empty transcript received`);
+                // Handle function calls immediately when created
+                if (event.item?.type === 'function_call' && event.item?.name) {
+                  console.log(`[${ucid}] 🔧 Function call created: ${event.item.name}`);
+                  
+                  // Try to parse arguments (might be empty initially)
+                  let args = {};
+                  try {
+                    args = JSON.parse(event.item.arguments || '{}');
+                  } catch (e) {
+                    console.log(`[${ucid}] ⚠️ Could not parse function arguments:`, event.item.arguments);
+                  }
+                  
+                  // If we have a session and function name, try to execute
+                  if (session && event.item.name) {
+                    console.log(`[${ucid}] 🎯 Attempting to execute function: ${event.item.name} with args:`, args);
+                    
+                    // Only execute if we have meaningful arguments or it's a simple function
+                    if (Object.keys(args).length > 0 || event.item.name === 'capture_all_sales_data') {
+                      const result = handleSDKToolCall(session, {
+                        name: event.item.name,
+                        parameters: args
+                      });
+                      
+                      // Send result back to OpenAI if we have a call_id
+                      if (event.item.call_id) {
+                        openaiWs.send(JSON.stringify({
+                          type: 'conversation.item.create',
+                          item: {
+                            type: 'function_call_output',
+                            call_id: event.item.call_id,
+                            output: JSON.stringify(result)
+                          }
+                        }));
+                        console.log(`[${ucid}] 📤 Function result sent to OpenAI:`, result);
+                      }
+                    }
+                  }
+                }
+                
+                // Handle user messages
+                if (event.item?.type === 'message' && event.item?.role === 'user') {
+                  const transcript = event.item?.content?.[0]?.transcript || '';
+                  console.log(`[${ucid}] 📝 User said: "${transcript}"`);
+                  
+                  // Auto-extract data from user speech (ensure session exists)
+                  if (session && transcript.trim()) {
+                    console.log(`[${ucid}] 🔍 Attempting data extraction from: "${transcript}"`);
+                    extractSalesData(session, transcript);
+                  } else if (!transcript.trim()) {
+                    console.log(`[${ucid}] ⚠️ Empty transcript received`);
+                  }
                 }
               }
               
