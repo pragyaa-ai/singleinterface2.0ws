@@ -31,6 +31,8 @@ interface Session {
     email_id?: string;
     verified: Set<string>;
   };
+  transcripts: string[];
+  lastCapturedData?: string;
 }
 
 const port = Number(process.env.TELEPHONY_WS_PORT || 8080);
@@ -139,10 +141,13 @@ function handleCaptureSalesData(session: Session, params: any) {
   // 🎯 HYBRID APPROACH: Update session data (like current regex)
   if (data_type === 'full_name') {
     session.salesData.full_name = value;
+    session.lastCapturedData = 'full_name';
   } else if (data_type === 'car_model') {
     session.salesData.car_model = value;
+    session.lastCapturedData = 'car_model';
   } else if (data_type === 'email_id') {
     session.salesData.email_id = value;
+    session.lastCapturedData = 'email_id';
   }
   
   console.log(`[${ucid}] 🎯 SDK Captured ${data_type}: ${value}${notes ? ` (${notes})` : ''}`);
@@ -357,17 +362,18 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
         session: {
           input_audio_format: 'pcm16',
           output_audio_format: 'pcm16',
+          voice: 'alloy',
           input_audio_transcription: { model: 'whisper-1' },
           turn_detection: {
             type: 'server_vad',
             threshold: 0.5,
             prefix_padding_ms: 300,
-            silence_duration_ms: 500   // Wait 0.5 seconds of silence before responding
+            silence_duration_ms: 300   // Wait 0.3 seconds of silence before responding
           },
           tools: telephonySDKTools,  // 🎯 ADD SDK TOOLS
           instructions: `# Personality and Tone
 ## Identity
-Speak in distinctly Indian English Accent. Always maintain female gender when replying. You are a professional, enthusiastic automotive sales assistant specializing in connecting potential car buyers with the right vehicles. You have extensive knowledge about various car models, features, and can guide customers through their car buying journey. Your expertise comes from years of helping customers find their perfect vehicle match.
+MANDATORY: Speak in distinctly Indian English Accent with Indian pronunciation patterns and intonation. Always maintain female gender when replying. Use Indian English vocabulary and phrasing patterns. You are a professional, enthusiastic automotive sales assistant specializing in connecting potential car buyers with the right vehicles. You have extensive knowledge about various car models, features, and can guide customers through their car buying journey. Your expertise comes from years of helping customers find their perfect vehicle match.
 
 ## Task
 You are here to assist potential car buyers by collecting their information for our sales team to provide personalized automotive solutions. Your primary role is to gather essential customer details and connect them with our automotive experts.
@@ -503,6 +509,8 @@ async function handleConnection(ws: WebSocket) {
             salesData: {
               verified: new Set<string>()
             },
+            transcripts: [],
+            lastCapturedData: undefined,
           };
           sessions.set(ucid, session);
 
@@ -576,6 +584,35 @@ async function handleConnection(ws: WebSocket) {
                   if (session && event.item.name) {
                     console.log(`[${ucid}] 🎯 Attempting to execute function: ${event.item.name} with args:`, args);
                     
+                    // 🎯 ENHANCED: Try to extract data from recent transcripts if args are empty
+                    if (Object.keys(args).length === 0 && event.item.name !== 'capture_all_sales_data') {
+                      console.log(`[${ucid}] 🔍 Empty args detected, attempting transcript extraction`);
+                      const recentTranscripts = session.transcripts?.slice(-3) || [];
+                      const lastTranscript = recentTranscripts[recentTranscripts.length - 1] || '';
+                      console.log(`[${ucid}] 📝 Recent transcripts for extraction:`, recentTranscripts);
+                      
+                      if (lastTranscript && lastTranscript !== 'Hello' && lastTranscript !== 'Yes') {
+                        if (event.item.name === 'capture_sales_data') {
+                          // Determine data type and extract value
+                          if (!session.salesData.full_name) {
+                            args = { data_type: 'full_name', value: lastTranscript, notes: 'Extracted from transcript' };
+                          } else if (!session.salesData.car_model) {
+                            args = { data_type: 'car_model', value: lastTranscript, notes: 'Extracted from transcript' };
+                          } else if (!session.salesData.email_id) {
+                            args = { data_type: 'email_id', value: lastTranscript, notes: 'Extracted from transcript' };
+                          }
+                          console.log(`[${ucid}] 🎯 Enhanced args from transcript:`, args);
+                        } else if (event.item.name === 'verify_sales_data') {
+                          // Determine what we're verifying based on recent context
+                          const isConfirmation = /^(yes|yeah|correct|right|true)$/i.test(lastTranscript);
+                          if (session.lastCapturedData) {
+                            args = { data_type: session.lastCapturedData, confirmed: isConfirmation };
+                            console.log(`[${ucid}] 🎯 Enhanced verification args:`, args);
+                          }
+                        }
+                      }
+                    }
+                    
                     // Only execute if we have meaningful arguments or it's a simple function
                     if (Object.keys(args).length > 0 || event.item.name === 'capture_all_sales_data') {
                       const result = handleSDKToolCall(session, {
@@ -595,6 +632,8 @@ async function handleConnection(ws: WebSocket) {
                         }));
                         console.log(`[${ucid}] 📤 Function result sent to OpenAI:`, result);
                       }
+                    } else {
+                      console.log(`[${ucid}] ⚠️ Skipping function call with empty args: ${event.item.name}`);
                     }
                   }
                 }
@@ -633,6 +672,15 @@ async function handleConnection(ws: WebSocket) {
               
               if (event.type === 'conversation.item.input_audio_transcription.completed') {
                 console.log(`[${ucid}] 📝 Transcription completed:`, event.transcript);
+                // Track transcripts for enhanced function call argument extraction
+                if (session && event.transcript) {
+                  session.transcripts.push(event.transcript);
+                  // Keep only last 5 transcripts to avoid memory issues
+                  if (session.transcripts.length > 5) {
+                    session.transcripts = session.transcripts.slice(-5);
+                  }
+                  console.log(`[${ucid}] 📚 Transcripts buffer:`, session.transcripts);
+                }
               }
               
               // 🎯 SDK TOOL CALLS - Handle function calls from AI
