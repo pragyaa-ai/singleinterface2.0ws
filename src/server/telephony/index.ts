@@ -594,23 +594,48 @@ async function handleConnection(ws: WebSocket) {
                       
                       if (lastTranscript && lastTranscript !== 'Hello' && lastTranscript !== 'Yes') {
                         if (event.item.name === 'capture_sales_data') {
-                          // Determine data type and extract value
-                          if (!session.salesData.full_name) {
-                            args = { data_type: 'full_name', value: lastTranscript, notes: 'Extracted from transcript' };
-                          } else if (!session.salesData.car_model) {
-                            args = { data_type: 'car_model', value: lastTranscript, notes: 'Extracted from transcript' };
-                          } else if (!session.salesData.email_id) {
-                            args = { data_type: 'email_id', value: lastTranscript, notes: 'Extracted from transcript' };
+                          // 🎯 INTELLIGENT DATA TYPE DETECTION
+                          let detectedType = '';
+                          let cleanValue = lastTranscript;
+                          
+                          // Email pattern detection
+                          if (/@|email|gmail|yahoo|hotmail|outlook/i.test(lastTranscript)) {
+                            detectedType = 'email_id';
+                            cleanValue = lastTranscript.replace(/[^a-zA-Z0-9@._-]/g, ''); // Clean email
                           }
-                          console.log(`[${ucid}] 🎯 Enhanced args from transcript:`, args);
+                          // Car model detection (common car brands/models)
+                          else if (/\b(toyota|honda|maruti|hyundai|tata|mahindra|ford|bmw|mercedes|audi|safari|swift|innova|camry|accord|civic|city|i20|creta|seltos|venue|fortuner|xuv|scorpio|bolero|dzire|baleno|alto|wagon|ertiga)\b/i.test(lastTranscript)) {
+                            detectedType = 'car_model';
+                          }
+                          // Name detection (contains typical name patterns)
+                          else if (/\b(my name is|i am|this is|call me|name|gulshan|mehta|kumar|sharma|singh|patel|gupta)\b/i.test(lastTranscript) || 
+                                   /^[A-Z][a-z]+ [A-Z][a-z]+/.test(lastTranscript)) {
+                            detectedType = 'full_name';
+                          }
+                          // Fallback to missing data field
+                          else {
+                            if (!session.salesData.full_name) detectedType = 'full_name';
+                            else if (!session.salesData.car_model) detectedType = 'car_model';
+                            else if (!session.salesData.email_id) detectedType = 'email_id';
+                          }
+                          
+                          if (detectedType) {
+                            args = { data_type: detectedType, value: cleanValue, notes: 'Auto-detected from transcript' };
+                            console.log(`[${ucid}] 🎯 Smart detection: ${detectedType} = "${cleanValue}"`);
+                          }
                         } else if (event.item.name === 'verify_sales_data') {
-                          // Determine what we're verifying based on recent context
-                          const isConfirmation = /^(yes|yeah|correct|right|true)$/i.test(lastTranscript);
+                          // 🎯 IMPROVED CONFIRMATION DETECTION
+                          const isConfirmation = /^(yes|yeah|correct|right|true|ok|yep|yup|that's correct|that's right)$/i.test(lastTranscript.trim());
                           if (session.lastCapturedData) {
                             args = { data_type: session.lastCapturedData, confirmed: isConfirmation };
-                            console.log(`[${ucid}] 🎯 Enhanced verification args:`, args);
+                            console.log(`[${ucid}] 🎯 Smart verification: ${session.lastCapturedData} = ${isConfirmation ? 'CONFIRMED' : 'REJECTED'}`);
                           }
                         }
+                      }
+                      // Handle simple confirmations for verification
+                      else if (/^(yes|yeah|correct|right|true|ok|yep|yup)$/i.test(lastTranscript) && event.item.name === 'verify_sales_data' && session.lastCapturedData) {
+                        args = { data_type: session.lastCapturedData, confirmed: true };
+                        console.log(`[${ucid}] 🎯 Simple confirmation: ${session.lastCapturedData} = CONFIRMED`);
                       }
                     }
                     
