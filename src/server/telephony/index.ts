@@ -362,7 +362,7 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
             type: 'server_vad',
             threshold: 0.5,
             prefix_padding_ms: 300,
-            silence_duration_ms: 1000  // Wait 1 second of silence before responding
+            silence_duration_ms: 500   // Wait 0.5 seconds of silence before responding
           },
           tools: telephonySDKTools,  // 🎯 ADD SDK TOOLS
           instructions: `# Personality and Tone
@@ -427,16 +427,17 @@ You have access to three powerful tools for data collection:
    - Use for bulk capture when conversation flows naturally
 
 # Conversation Flow
-1. **Opening**: Greet and explain your automotive sales assistance purpose, then WAIT for user response
-2. **Data Collection**: Ask for ONE data point at a time, then WAIT for user response
-3. **Verification**: Use the mandatory confirmation protocol for each data point, WAIT for confirmation
+1. **Opening**: Greet and explain your automotive sales assistance purpose, then wait for user response
+2. **Data Collection**: Ask for ONE data point at a time, process response immediately
+3. **Verification**: Use the mandatory confirmation protocol for each data point, continue promptly after confirmation  
 4. **Completion**: Once all data is collected and verified, thank the user and connect them with car brand dealer
 
-# CRITICAL: WAIT FOR USER RESPONSES
+# CRITICAL: RESPONSIVE CONVERSATION FLOW  
 - Ask ONE question at a time
-- ALWAYS wait for the user to respond before asking the next question
-- Do NOT speak continuously or ask multiple questions in sequence
-- Listen carefully to user responses before proceeding
+- RESPOND IMMEDIATELY when user provides information - don't wait for additional prompts
+- Use tools immediately when customer provides data
+- After capturing and confirming data, move to the next question promptly
+- Listen carefully to user responses and process them without delay
 
 # Important Guidelines
 - Always maintain the confirmation protocol - never skip the verification step
