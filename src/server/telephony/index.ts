@@ -523,11 +523,12 @@ async function handleConnection(ws: WebSocket) {
               // 🔍 DEBUG: Log important OpenAI events only
               const importantEvents = [
                 'conversation.item.created',
+                'conversation.item.updated',        // 🎯 TRACK FUNCTION CALL UPDATES
                 'input_audio_buffer.speech_started', 
                 'input_audio_buffer.speech_stopped',
                 'conversation.item.input_audio_transcription.completed',
-                'response.function_call_delta',
-                'response.function_call_done'
+                'response.function_call_arguments.delta',  // 🎯 TRACK FUNCTION ARGUMENTS STREAMING
+                'response.function_call_arguments.done'    // 🎯 TRACK FUNCTION ARGUMENTS COMPLETION
               ];
               
               if (importantEvents.includes(event.type)) {
@@ -566,14 +567,14 @@ async function handleConnection(ws: WebSocket) {
               }
 
               // 🔍 ENHANCED: Log ALL conversation events
-              if (event.type === 'conversation.item.created') {
-                console.log(`[${ucid}] 🗣️ Conversation Item Created:`, JSON.stringify(event.item, null, 2));
+              if (event.type === 'conversation.item.created' || event.type === 'conversation.item.updated') {
+                console.log(`[${ucid}] 🗣️ Conversation Item ${event.type === 'conversation.item.created' ? 'Created' : 'Updated'}:`, JSON.stringify(event.item, null, 2));
                 
-                // Handle function calls immediately when created
+                // 🎯 IMPROVED: Handle function calls properly - wait for completion or valid arguments
                 if (event.item?.type === 'function_call' && event.item?.name) {
-                  console.log(`[${ucid}] 🔧 Function call created: ${event.item.name}`);
+                  console.log(`[${ucid}] 🔧 Function call created: ${event.item.name} (status: ${event.item.status})`);
                   
-                  // Try to parse arguments (might be empty initially)
+                  // Try to parse arguments
                   let args = {};
                   try {
                     args = JSON.parse(event.item.arguments || '{}');
@@ -581,86 +582,39 @@ async function handleConnection(ws: WebSocket) {
                     console.log(`[${ucid}] ⚠️ Could not parse function arguments:`, event.item.arguments);
                   }
                   
-                  // If we have a session and function name, try to execute
-                  if (session && event.item.name) {
-                    console.log(`[${ucid}] 🎯 Attempting to execute function: ${event.item.name} with args:`, args);
+                  // 🎯 KEY FIX: Check if we have proper arguments with required fields
+                  const hasValidArgs = Object.keys(args).length > 0 && (
+                    (event.item.name === 'capture_sales_data' && args.data_type && args.value) ||
+                    (event.item.name === 'verify_sales_data' && args.data_type && typeof args.confirmed === 'boolean') ||
+                    (event.item.name === 'capture_all_sales_data' && args.full_name && args.car_model && args.email_id)
+                  );
+                  
+                  // 🎯 Execute only when status is 'completed' OR we have valid arguments
+                  const shouldExecute = event.item.status === 'completed' || hasValidArgs;
+                  
+                  if (session && event.item.name && shouldExecute) {
+                    console.log(`[${ucid}] ✅ Executing function: ${event.item.name} with valid args:`, args);
                     
-                    // 🎯 ENHANCED: Try to extract data from recent transcripts if args are empty
-                    if (Object.keys(args).length === 0 && event.item.name !== 'capture_all_sales_data') {
-                      console.log(`[${ucid}] 🔍 Empty args detected, attempting transcript extraction`);
-                      const recentTranscripts = session.transcripts?.slice(-3) || [];
-                      const lastTranscript = recentTranscripts[recentTranscripts.length - 1] || '';
-                      console.log(`[${ucid}] 📝 Recent transcripts for extraction:`, recentTranscripts);
-                      
-                      if (lastTranscript && lastTranscript !== 'Hello' && lastTranscript !== 'Yes') {
-                        if (event.item.name === 'capture_sales_data') {
-                          // 🎯 INTELLIGENT DATA TYPE DETECTION
-                          let detectedType = '';
-                          let cleanValue = lastTranscript;
-                          
-                          // Email pattern detection
-                          if (/@|email|gmail|yahoo|hotmail|outlook/i.test(lastTranscript)) {
-                            detectedType = 'email_id';
-                            cleanValue = lastTranscript.replace(/[^a-zA-Z0-9@._-]/g, ''); // Clean email
-                          }
-                          // Car model detection (common car brands/models)
-                          else if (/\b(toyota|honda|maruti|hyundai|tata|mahindra|ford|bmw|mercedes|audi|safari|swift|innova|camry|accord|civic|city|i20|creta|seltos|venue|fortuner|xuv|scorpio|bolero|dzire|baleno|alto|wagon|ertiga)\b/i.test(lastTranscript)) {
-                            detectedType = 'car_model';
-                          }
-                          // Name detection (contains typical name patterns)
-                          else if (/\b(my name is|i am|this is|call me|name|gulshan|mehta|kumar|sharma|singh|patel|gupta)\b/i.test(lastTranscript) || 
-                                   /^[A-Z][a-z]+ [A-Z][a-z]+/.test(lastTranscript)) {
-                            detectedType = 'full_name';
-                          }
-                          // Fallback to missing data field
-                          else {
-                            if (!session.salesData.full_name) detectedType = 'full_name';
-                            else if (!session.salesData.car_model) detectedType = 'car_model';
-                            else if (!session.salesData.email_id) detectedType = 'email_id';
-                          }
-                          
-                          if (detectedType) {
-                            args = { data_type: detectedType, value: cleanValue, notes: 'Auto-detected from transcript' };
-                            console.log(`[${ucid}] 🎯 Smart detection: ${detectedType} = "${cleanValue}"`);
-                          }
-                        } else if (event.item.name === 'verify_sales_data') {
-                          // 🎯 IMPROVED CONFIRMATION DETECTION
-                          const isConfirmation = /^(yes|yeah|correct|right|true|ok|yep|yup|that's correct|that's right)$/i.test(lastTranscript.trim());
-                          if (session.lastCapturedData) {
-                            args = { data_type: session.lastCapturedData, confirmed: isConfirmation };
-                            console.log(`[${ucid}] 🎯 Smart verification: ${session.lastCapturedData} = ${isConfirmation ? 'CONFIRMED' : 'REJECTED'}`);
-                          }
+                    const result = handleSDKToolCall(session, {
+                      name: event.item.name,
+                      parameters: args
+                    });
+                    
+                    // Send result back to OpenAI if we have a call_id
+                    if (event.item.call_id) {
+                      openaiWs.send(JSON.stringify({
+                        type: 'conversation.item.create',
+                        item: {
+                          type: 'function_call_output',
+                          call_id: event.item.call_id,
+                          output: JSON.stringify(result)
                         }
-                      }
-                      // Handle simple confirmations for verification
-                      else if (/^(yes|yeah|correct|right|true|ok|yep|yup)$/i.test(lastTranscript) && event.item.name === 'verify_sales_data' && session.lastCapturedData) {
-                        args = { data_type: session.lastCapturedData, confirmed: true };
-                        console.log(`[${ucid}] 🎯 Simple confirmation: ${session.lastCapturedData} = CONFIRMED`);
-                      }
+                      }));
+                      console.log(`[${ucid}] 📤 Function result sent to OpenAI:`, result);
                     }
-                    
-                    // Only execute if we have meaningful arguments or it's a simple function
-                    if (Object.keys(args).length > 0 || event.item.name === 'capture_all_sales_data') {
-                      const result = handleSDKToolCall(session, {
-                        name: event.item.name,
-                        parameters: args
-                      });
-                      
-                      // Send result back to OpenAI if we have a call_id
-                      if (event.item.call_id) {
-                        openaiWs.send(JSON.stringify({
-                          type: 'conversation.item.create',
-                          item: {
-                            type: 'function_call_output',
-                            call_id: event.item.call_id,
-                            output: JSON.stringify(result)
-                          }
-                        }));
-                        console.log(`[${ucid}] 📤 Function result sent to OpenAI:`, result);
-                      }
-                    } else {
-                      console.log(`[${ucid}] ⚠️ Skipping function call with empty args: ${event.item.name}`);
-                    }
+                  } else if (session && event.item.name) {
+                    console.log(`[${ucid}] ⏳ Function call not ready - status: ${event.item.status}, hasValidArgs: ${hasValidArgs}`);
+                    console.log(`[${ucid}] 📋 Waiting for proper arguments. Current args:`, args);
                   }
                 }
                 
