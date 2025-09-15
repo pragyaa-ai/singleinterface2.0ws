@@ -523,12 +523,11 @@ async function handleConnection(ws: WebSocket) {
               // 🔍 DEBUG: Log important OpenAI events only
               const importantEvents = [
                 'conversation.item.created',
-                'conversation.item.updated',        // 🎯 TRACK FUNCTION CALL UPDATES
                 'input_audio_buffer.speech_started', 
                 'input_audio_buffer.speech_stopped',
                 'conversation.item.input_audio_transcription.completed',
-                'response.function_call_arguments.delta',  // 🎯 TRACK FUNCTION ARGUMENTS STREAMING
-                'response.function_call_arguments.done'    // 🎯 TRACK FUNCTION ARGUMENTS COMPLETION
+                'response.function_call_delta',
+                'response.function_call_done'
               ];
               
               if (importantEvents.includes(event.type)) {
@@ -567,33 +566,22 @@ async function handleConnection(ws: WebSocket) {
               }
 
               // 🔍 ENHANCED: Log ALL conversation events
-              if (event.type === 'conversation.item.created' || event.type === 'conversation.item.updated') {
-                console.log(`[${ucid}] 🗣️ Conversation Item ${event.type === 'conversation.item.created' ? 'Created' : 'Updated'}:`, JSON.stringify(event.item, null, 2));
+              if (event.type === 'conversation.item.created') {
+                console.log(`[${ucid}] 🗣️ Conversation Item Created:`, JSON.stringify(event.item, null, 2));
                 
-                // 🎯 IMPROVED: Handle function calls properly - wait for completion or valid arguments
+                // Handle function calls when created
                 if (event.item?.type === 'function_call' && event.item?.name) {
-                  console.log(`[${ucid}] 🔧 Function call created: ${event.item.name} (status: ${event.item.status})`);
+                  console.log(`[${ucid}] 🔧 Function call created: ${event.item.name}`);
                   
-                  // Try to parse arguments
-                  let args: any = {};
+                  let args = {};
                   try {
                     args = JSON.parse(event.item.arguments || '{}');
                   } catch (e) {
                     console.log(`[${ucid}] ⚠️ Could not parse function arguments:`, event.item.arguments);
                   }
                   
-                  // 🎯 KEY FIX: Check if we have proper arguments with required fields
-                  const hasValidArgs = Object.keys(args).length > 0 && (
-                    (event.item.name === 'capture_sales_data' && args.data_type && args.value) ||
-                    (event.item.name === 'verify_sales_data' && args.data_type && typeof args.confirmed === 'boolean') ||
-                    (event.item.name === 'capture_all_sales_data' && args.full_name && args.car_model && args.email_id)
-                  );
-                  
-                  // 🎯 Execute only when status is 'completed' OR we have valid arguments
-                  const shouldExecute = event.item.status === 'completed' || hasValidArgs;
-                  
-                  if (session && event.item.name && shouldExecute) {
-                    console.log(`[${ucid}] ✅ Executing function: ${event.item.name} with valid args:`, args);
+                  if (session && event.item.name) {
+                    console.log(`[${ucid}] 🎯 Executing function: ${event.item.name} with args:`, args);
                     
                     const result = handleSDKToolCall(session, {
                       name: event.item.name,
@@ -612,9 +600,6 @@ async function handleConnection(ws: WebSocket) {
                       }));
                       console.log(`[${ucid}] 📤 Function result sent to OpenAI:`, result);
                     }
-                  } else if (session && event.item.name) {
-                    console.log(`[${ucid}] ⏳ Function call not ready - status: ${event.item.status}, hasValidArgs: ${hasValidArgs}`);
-                    console.log(`[${ucid}] 📋 Waiting for proper arguments. Current args:`, args);
                   }
                 }
                 
