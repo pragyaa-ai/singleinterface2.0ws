@@ -575,7 +575,7 @@ async function handleConnection(ws: WebSocket) {
                   console.log(`[${ucid}] 🔧 Function call created: ${event.item.name} (status: ${event.item.status})`);
                   
                   // Try to parse arguments
-                  let args = {};
+                  let args: any = {};
                   try {
                     args = JSON.parse(event.item.arguments || '{}');
                   } catch (e) {
