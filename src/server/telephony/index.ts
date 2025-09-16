@@ -4,6 +4,8 @@ import WebSocket, { WebSocketServer } from 'ws';
 import fs from 'fs';
 import path from 'path';
 import { int16ArrayToBase64, ensureInt16Array, upsample8kTo24k, downsample24kTo8k } from './audio';
+// 🆕 NEW: OpenAI Agents SDK for intelligent transcript processing
+import { Agent, run, tool } from '@openai/agents';
 
 interface OzonetelMediaPacket {
   event: string;
@@ -17,6 +19,31 @@ interface OzonetelMediaPacket {
     numberOfFrames: number;
     type: 'data';
   };
+}
+
+interface QuestionAnswerPair {
+  question: string;
+  answer: string;
+  questionTimestamp: number;
+  answerTimestamp: number;
+  duration: number;
+  dataType?: 'full_name' | 'car_model' | 'email_id';
+  reattempts: number;
+}
+
+interface CallAnalytics {
+  callStartTime: number;
+  callEndTime?: number;
+  questionAnswerPairs: QuestionAnswerPair[];
+  parametersAttempted: Set<string>;
+  parametersCaptured: Set<string>;
+  dropOffPoint?: {
+    lastEvent: string;
+    timestamp: number;
+    context: string;
+  };
+  currentSpeechStart?: number;
+  currentQuestionStart?: number;
 }
 
 interface Session {
@@ -33,6 +60,8 @@ interface Session {
   };
   transcripts: string[];
   lastCapturedData?: string;
+  // 🆕 NEW: Optional call analytics (non-breaking)
+  callAnalytics?: CallAnalytics;
 }
 
 const port = Number(process.env.TELEPHONY_WS_PORT || 8080);
@@ -211,6 +240,214 @@ function handleCaptureAllSalesData(session: Session, params: any) {
   };
 }
 
+// 🆕 NEW: Analytics-enabled Spotlight Agent using OpenAI Agents SDK
+const analyticsSpotlightAgent = new Agent({
+  name: 'AnalyticsSpotlight',
+  instructions: `
+# Automotive Sales Assistant with Advanced Analytics
+
+You are a professional automotive sales assistant with advanced conversation analytics capabilities.
+Your primary goal is to extract sales data AND analyze conversation patterns from customer interactions.
+
+## Required Sales Data:
+1. **full_name** - Customer's complete name
+2. **car_model** - Specific car model they're interested in
+3. **email_id** - Customer's email address
+
+## Analytics Tasks:
+- Detect data extraction opportunities with confidence levels
+- Identify reattempts and corrections
+- Analyze conversation flow and engagement
+- Detect confusion or drop-off indicators
+
+## Instructions:
+- Process each transcript for both data extraction AND conversation analysis
+- Use tools to capture data with analytics metadata
+- Provide confidence scores for extracted information
+- Flag unclear responses for expert review
+- Track conversation progress and user engagement
+
+Always use the available tools to capture both sales data and conversation insights.
+  `,
+  tools: [
+    tool({
+      name: 'capture_sales_data_with_analytics',
+      description: 'Capture sales data with conversation analytics and confidence scoring',
+      parameters: {
+        type: "object",
+        properties: {
+          data_type: {
+            type: "string",
+            enum: ["full_name", "car_model", "email_id"],
+            description: "The type of sales data being captured"
+          },
+          value: {
+            type: "string",
+            description: "The actual data value extracted from conversation"
+          },
+          confidence_level: {
+            type: "number",
+            minimum: 0,
+            maximum: 1,
+            description: "Confidence score (0-1) for the extracted data"
+          },
+          is_reattempt: {
+            type: "boolean",
+            description: "Whether this is a reattempt/correction of previous data"
+          },
+          context_clues: {
+            type: "string",
+            description: "Conversation context that led to this extraction"
+          },
+          notes: {
+            type: "string",
+            description: "Additional notes or observations"
+          }
+        },
+        required: ["data_type", "value", "confidence_level"]
+      },
+      execute: async (input) => {
+        // This will be handled by our processing function
+        return { success: true, captured: input };
+      }
+    }),
+    
+    tool({
+      name: 'analyze_conversation_flow',
+      description: 'Analyze conversation patterns and engagement levels',
+      parameters: {
+        type: "object",
+        properties: {
+          current_step: {
+            type: "string",
+            description: "Current conversation step (greeting, name_collection, etc.)"
+          },
+          user_engagement_level: {
+            type: "string",
+            enum: ["high", "medium", "low"],
+            description: "User's engagement level based on response quality"
+          },
+          confusion_indicators: {
+            type: "array",
+            items: { type: "string" },
+            description: "Signs of user confusion or hesitation"
+          },
+          conversation_quality: {
+            type: "string",
+            enum: ["excellent", "good", "fair", "poor"],
+            description: "Overall conversation quality assessment"
+          }
+        },
+        required: ["current_step", "user_engagement_level"]
+      },
+      execute: async (input) => {
+        return { success: true, analysis: input };
+      }
+    })
+  ]
+});
+
+// 🆕 NEW: Process transcript with Analytics Agent (parallel to existing regex)
+async function processTranscriptWithAgent(session: Session, transcript: string): Promise<boolean> {
+  const ucid = session.ucid;
+  
+  try {
+    console.log(`[${ucid}] 🤖 Processing with Analytics Agent: "${transcript}"`);
+    
+    // Provide context about current session state
+    const context = `
+Current session state:
+- Name: ${session.salesData.full_name || 'Not captured'}
+- Car Model: ${session.salesData.car_model || 'Not captured'}  
+- Email: ${session.salesData.email_id || 'Not captured'}
+- Previous transcripts: ${session.transcripts.slice(-3).join('; ')}
+
+Process this new transcript: "${transcript}"
+    `;
+    
+    const result = await run(analyticsSpotlightAgent, context);
+    
+    // Process any tool calls from the agent
+    if (result.toolCalls && result.toolCalls.length > 0) {
+      for (const toolCall of result.toolCalls) {
+        if (toolCall.tool.name === 'capture_sales_data_with_analytics') {
+          await handleAgentDataCapture(session, toolCall.result.captured);
+        } else if (toolCall.tool.name === 'analyze_conversation_flow') {
+          await handleConversationAnalysis(session, toolCall.result.analysis);
+        }
+      }
+      return true; // Agent successfully processed
+    }
+    
+    return false; // No tools called, use fallback
+    
+  } catch (error) {
+    console.error(`[${ucid}] ❌ Agent processing failed:`, error);
+    return false; // Use fallback on error
+  }
+}
+
+// Handle data capture from agent with analytics
+async function handleAgentDataCapture(session: Session, capturedData: any) {
+  const ucid = session.ucid;
+  const { data_type, value, confidence_level, is_reattempt, context_clues, notes } = capturedData;
+  
+  console.log(`[${ucid}] 🎯 Agent captured ${data_type}: "${value}" (confidence: ${confidence_level})`);
+  
+  // Update session data (same as existing logic)
+  if (data_type === 'full_name') {
+    session.salesData.full_name = value;
+  } else if (data_type === 'car_model') {
+    session.salesData.car_model = value;  
+  } else if (data_type === 'email_id') {
+    session.salesData.email_id = value;
+  }
+  
+  // Update analytics
+  if (session.callAnalytics) {
+    session.callAnalytics.parametersAttempted.add(data_type);
+    if (confidence_level > 0.7) { // High confidence threshold
+      session.callAnalytics.parametersCaptured.add(data_type);
+    }
+    
+    // Track Q&A pair if we have timing data
+    if (session.callAnalytics.currentSpeechStart) {
+      const duration = Date.now() - session.callAnalytics.currentSpeechStart;
+      session.callAnalytics.questionAnswerPairs.push({
+        question: `Capture ${data_type}`,
+        answer: value,
+        questionTimestamp: session.callAnalytics.currentSpeechStart,
+        answerTimestamp: Date.now(),
+        duration: duration,
+        dataType: data_type as 'full_name' | 'car_model' | 'email_id',
+        reattempts: is_reattempt ? 1 : 0
+      });
+    }
+  }
+  
+  console.log(`[${ucid}] 📊 Analytics: Confidence=${confidence_level}, Reattempt=${is_reattempt}, Context="${context_clues}"`);
+  
+  // Check completion (same as existing)
+  checkDataCompletion(session);
+}
+
+// Handle conversation flow analysis
+async function handleConversationAnalysis(session: Session, analysis: any) {
+  const ucid = session.ucid;
+  const { current_step, user_engagement_level, confusion_indicators, conversation_quality } = analysis;
+  
+  console.log(`[${ucid}] 📊 Conversation Analysis: Step="${current_step}", Engagement=${user_engagement_level}, Quality=${conversation_quality}`);
+  
+  if (confusion_indicators && confusion_indicators.length > 0) {
+    console.log(`[${ucid}] ⚠️ Confusion detected: ${confusion_indicators.join(', ')}`);
+  }
+  
+  // Could trigger different conversation strategies based on analysis
+  if (user_engagement_level === 'low') {
+    console.log(`[${ucid}] 🚨 Low engagement detected - consider escalation`);
+  }
+}
+
 // Data extraction function to simulate Spotlight agent tools (KEEP EXISTING - FALLBACK)
 function extractSalesData(session: Session, transcript: string) {
   const ucid = session.ucid;
@@ -296,14 +533,53 @@ function saveSalesDataToFile(session: Session) {
   const { full_name, car_model, email_id } = session.salesData;
   const ucid = session.ucid;
   
+  // 🆕 NEW: Enhanced call data with comprehensive analytics
   const callData = {
     ucid: ucid,
     timestamp: new Date().toISOString(),
-    full_name: full_name || 'Not captured',
-    car_model: car_model || 'Not captured', 
-    email_id: email_id || 'Not captured',
-    status: (full_name && car_model && email_id) ? 'Complete' : 'Partial',
-    call_duration: Date.now() // Will be updated when call ends
+    
+    // Sales Data
+    salesData: {
+      full_name: full_name || 'Not captured',
+      car_model: car_model || 'Not captured', 
+      email_id: email_id || 'Not captured',
+      status: (full_name && car_model && email_id) ? 'Complete' : 'Partial'
+    },
+    
+    // 🆕 NEW: Call Analytics
+    callAnalytics: session.callAnalytics ? {
+      callDuration: session.callAnalytics.callEndTime ? 
+        session.callAnalytics.callEndTime - session.callAnalytics.callStartTime : 
+        Date.now() - session.callAnalytics.callStartTime,
+      
+      parametersAttempted: Array.from(session.callAnalytics.parametersAttempted),
+      parametersCaptured: Array.from(session.callAnalytics.parametersCaptured),
+      
+      questionAnswerPairs: session.callAnalytics.questionAnswerPairs.map(qa => ({
+        question: qa.question,
+        answer: qa.answer,
+        duration: qa.duration,
+        dataType: qa.dataType,
+        reattempts: qa.reattempts,
+        timestamp: new Date(qa.questionTimestamp).toISOString()
+      })),
+      
+      totalQuestions: session.callAnalytics.questionAnswerPairs.length,
+      averageResponseTime: session.callAnalytics.questionAnswerPairs.length > 0 ?
+        session.callAnalytics.questionAnswerPairs.reduce((sum, qa) => sum + qa.duration, 0) / 
+        session.callAnalytics.questionAnswerPairs.length : 0,
+      
+      dropOffPoint: session.callAnalytics.dropOffPoint || null
+    } : null,
+    
+    // Conversation Context
+    transcripts: session.transcripts || [],
+    totalTranscripts: session.transcripts?.length || 0,
+    
+    // Legacy field for backward compatibility
+    call_duration: session.callAnalytics?.callEndTime ? 
+      session.callAnalytics.callEndTime - session.callAnalytics.callStartTime : 
+      Date.now() - (session.callAnalytics?.callStartTime || Date.now())
   };
   
   const filename = `call_${ucid}_${Date.now()}.json`;
@@ -512,6 +788,13 @@ async function handleConnection(ws: WebSocket) {
             },
             transcripts: [],
             lastCapturedData: undefined,
+            // 🆕 NEW: Initialize call analytics
+            callAnalytics: {
+              callStartTime: Date.now(),
+              questionAnswerPairs: [],
+              parametersAttempted: new Set<string>(),
+              parametersCaptured: new Set<string>(),
+            }
           };
           sessions.set(ucid, session);
 
@@ -608,10 +891,20 @@ async function handleConnection(ws: WebSocket) {
                   const transcript = event.item?.content?.[0]?.transcript || '';
                   console.log(`[${ucid}] 📝 User said: "${transcript}"`);
                   
-                  // Auto-extract data from user speech (ensure session exists)
+                  // 🆕 NEW: Hybrid processing - Agent + Fallback
                   if (session && transcript.trim()) {
-                    console.log(`[${ucid}] 🔍 Attempting data extraction from: "${transcript}"`);
-                    extractSalesData(session, transcript);
+                    console.log(`[${ucid}] 🔍 Processing transcript: "${transcript}"`);
+                    
+                    // Try agent processing first
+                    const agentSuccess = await processTranscriptWithAgent(session, transcript);
+                    
+                    if (!agentSuccess) {
+                      // Fallback to existing regex extraction
+                      console.log(`[${ucid}] 🔄 Agent processing failed, using regex fallback`);
+                      extractSalesData(session, transcript);
+                    } else {
+                      console.log(`[${ucid}] ✅ Agent processing successful`);
+                    }
                   } else if (!transcript.trim()) {
                     console.log(`[${ucid}] ⚠️ Empty transcript received`);
                   }
@@ -629,10 +922,19 @@ async function handleConnection(ws: WebSocket) {
               
               if (event.type === 'input_audio_buffer.speech_started') {
                 console.log(`[${ucid}] 🎤 Speech started detected`);
+                // 🆕 NEW: Capture speech timing
+                if (session?.callAnalytics) {
+                  session.callAnalytics.currentSpeechStart = Date.now();
+                }
               }
               
               if (event.type === 'input_audio_buffer.speech_stopped') {
                 console.log(`[${ucid}] 🛑 Speech stopped detected`);
+                // 🆕 NEW: Calculate speech duration
+                if (session?.callAnalytics?.currentSpeechStart) {
+                  const speechDuration = Date.now() - session.callAnalytics.currentSpeechStart;
+                  console.log(`[${ucid}] ⏱️ Speech duration: ${speechDuration}ms`);
+                }
               }
               
               if (event.type === 'conversation.item.input_audio_transcription.completed') {
@@ -715,6 +1017,13 @@ async function handleConnection(ws: WebSocket) {
 
       if (msg.event === 'stop') {
         if (session) {
+          // 🆕 NEW: Capture call end time and duration
+          if (session.callAnalytics) {
+            session.callAnalytics.callEndTime = Date.now();
+            const totalDuration = session.callAnalytics.callEndTime - session.callAnalytics.callStartTime;
+            console.log(`[${session.ucid}] ⏱️ Total call duration: ${totalDuration}ms (${Math.round(totalDuration/1000)}s)`);
+          }
+          
           // Save any partial data collected before call ends
           const { full_name, car_model, email_id } = session.salesData;
           if (full_name || car_model || email_id) {
