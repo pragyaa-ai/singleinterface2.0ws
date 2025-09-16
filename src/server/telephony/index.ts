@@ -247,213 +247,12 @@ function handleCaptureAllSalesData(session: Session, params: any) {
   };
 }
 
-// 🆕 NEW: Analytics-enabled Spotlight Agent using OpenAI Agents SDK
-const analyticsSpotlightAgent = new Agent({
-  name: 'AnalyticsSpotlight',
-  instructions: `
-# Automotive Sales Assistant with Advanced Analytics
+// Agent definition moved to separate module for better maintainability
 
-You are a professional automotive sales assistant with advanced conversation analytics capabilities.
-Your primary goal is to extract sales data AND analyze conversation patterns from customer interactions.
-
-## Required Sales Data:
-1. **full_name** - Customer's complete name
-2. **car_model** - Specific car model they're interested in
-3. **email_id** - Customer's email address
-
-## Analytics Tasks:
-- Detect data extraction opportunities with confidence levels
-- Identify reattempts and corrections
-- Analyze conversation flow and engagement
-- Detect confusion or drop-off indicators
-
-## Instructions:
-- Process each transcript for both data extraction AND conversation analysis
-- Use tools to capture data with analytics metadata
-- Provide confidence scores for extracted information
-- Flag unclear responses for expert review
-- Track conversation progress and user engagement
-
-Always use the available tools to capture both sales data and conversation insights.
-  `,
-  tools: [
-    tool({
-      name: 'capture_sales_data_with_analytics',
-      description: 'Capture sales data with conversation analytics and confidence scoring',
-      parameters: {
-        type: "object",
-        properties: {
-          data_type: {
-            type: "string",
-            enum: ["full_name", "car_model", "email_id"],
-            description: "The type of sales data being captured"
-          },
-          value: {
-            type: "string",
-            description: "The actual data value extracted from conversation"
-          },
-          confidence_level: {
-            type: "number",
-            minimum: 0,
-            maximum: 1,
-            description: "Confidence score (0-1) for the extracted data"
-          },
-          is_reattempt: {
-            type: "boolean",
-            description: "Whether this is a reattempt/correction of previous data"
-          },
-          context_clues: {
-            type: "string",
-            description: "Conversation context that led to this extraction"
-          },
-          notes: {
-            type: "string",
-            description: "Additional notes or observations"
-          }
-        },
-        required: ["data_type", "value", "confidence_level"]
-      },
-      execute: async (input) => {
-        // This will be handled by our processing function
-        return { success: true, captured: input };
-      }
-    }),
-    
-    tool({
-      name: 'analyze_conversation_flow',
-      description: 'Analyze conversation patterns and engagement levels',
-      parameters: {
-        type: "object",
-        properties: {
-          current_step: {
-            type: "string",
-            description: "Current conversation step (greeting, name_collection, etc.)"
-          },
-          user_engagement_level: {
-            type: "string",
-            enum: ["high", "medium", "low"],
-            description: "User's engagement level based on response quality"
-          },
-          confusion_indicators: {
-            type: "array",
-            items: { type: "string" },
-            description: "Signs of user confusion or hesitation"
-          },
-          conversation_quality: {
-            type: "string",
-            enum: ["excellent", "good", "fair", "poor"],
-            description: "Overall conversation quality assessment"
-          }
-        },
-        required: ["current_step", "user_engagement_level"]
-      },
-      execute: async (input) => {
-        return { success: true, analysis: input };
-      }
-    })
-  ]
-});
-
-// 🆕 NEW: Process transcript with Analytics Agent (parallel to existing regex)
-async function processTranscriptWithAgent(session: Session, transcript: string): Promise<boolean> {
-  const ucid = session.ucid;
-  
-  try {
-    console.log(`[${ucid}] 🤖 Processing with Analytics Agent: "${transcript}"`);
-    
-    // Provide context about current session state
-    const context = `
-Current session state:
-- Name: ${session.salesData.full_name || 'Not captured'}
-- Car Model: ${session.salesData.car_model || 'Not captured'}  
-- Email: ${session.salesData.email_id || 'Not captured'}
-- Previous transcripts: ${session.transcripts.slice(-3).join('; ')}
-
-Process this new transcript: "${transcript}"
-    `;
-    
-    const result = await run(analyticsSpotlightAgent, context);
-    
-    // Process any tool calls from the agent
-    if (result.toolCalls && result.toolCalls.length > 0) {
-      for (const toolCall of result.toolCalls) {
-        if (toolCall.tool.name === 'capture_sales_data_with_analytics') {
-          await handleAgentDataCapture(session, toolCall.result.captured);
-        } else if (toolCall.tool.name === 'analyze_conversation_flow') {
-          await handleConversationAnalysis(session, toolCall.result.analysis);
-        }
-      }
-      return true; // Agent successfully processed
-    }
-    
-    return false; // No tools called, use fallback
-    
-  } catch (error) {
-    console.error(`[${ucid}] ❌ Agent processing failed:`, error);
-    return false; // Use fallback on error
-  }
-}
+// Removed old agent processing - now using modular agent from ./agents/transcriptAgent
 
 // Handle data capture from agent with analytics
-async function handleAgentDataCapture(session: Session, capturedData: any) {
-  const ucid = session.ucid;
-  const { data_type, value, confidence_level, is_reattempt, context_clues, notes } = capturedData;
-  
-  console.log(`[${ucid}] 🎯 Agent captured ${data_type}: "${value}" (confidence: ${confidence_level})`);
-  
-  // Update session data (same as existing logic)
-  if (data_type === 'full_name') {
-    session.salesData.full_name = value;
-  } else if (data_type === 'car_model') {
-    session.salesData.car_model = value;  
-  } else if (data_type === 'email_id') {
-    session.salesData.email_id = value;
-  }
-  
-  // Update analytics
-  if (session.callAnalytics) {
-    session.callAnalytics.parametersAttempted.add(data_type);
-    if (confidence_level > 0.7) { // High confidence threshold
-      session.callAnalytics.parametersCaptured.add(data_type);
-    }
-    
-    // Track Q&A pair if we have timing data
-    if (session.callAnalytics.currentSpeechStart) {
-      const duration = Date.now() - session.callAnalytics.currentSpeechStart;
-      session.callAnalytics.questionAnswerPairs.push({
-        question: `Capture ${data_type}`,
-        answer: value,
-        questionTimestamp: session.callAnalytics.currentSpeechStart,
-        answerTimestamp: Date.now(),
-        duration: duration,
-        dataType: data_type as 'full_name' | 'car_model' | 'email_id',
-        reattempts: is_reattempt ? 1 : 0
-      });
-    }
-  }
-  
-  console.log(`[${ucid}] 📊 Analytics: Confidence=${confidence_level}, Reattempt=${is_reattempt}, Context="${context_clues}"`);
-  
-  // Check completion (same as existing)
-  checkDataCompletion(session);
-}
-
-// Handle conversation flow analysis
-async function handleConversationAnalysis(session: Session, analysis: any) {
-  const ucid = session.ucid;
-  const { current_step, user_engagement_level, confusion_indicators, conversation_quality } = analysis;
-  
-  console.log(`[${ucid}] 📊 Conversation Analysis: Step="${current_step}", Engagement=${user_engagement_level}, Quality=${conversation_quality}`);
-  
-  if (confusion_indicators && confusion_indicators.length > 0) {
-    console.log(`[${ucid}] ⚠️ Confusion detected: ${confusion_indicators.join(', ')}`);
-  }
-  
-  // Could trigger different conversation strategies based on analysis
-  if (user_engagement_level === 'low') {
-    console.log(`[${ucid}] 🚨 Low engagement detected - consider escalation`);
-  }
-}
+// Handler functions removed - using simpler approach with modular agent
 
 // Data extraction function to simulate Spotlight agent tools (KEEP EXISTING - FALLBACK)
 function extractSalesData(session: Session, transcript: string) {
@@ -898,20 +697,27 @@ async function handleConnection(ws: WebSocket) {
                   const transcript = event.item?.content?.[0]?.transcript || '';
                   console.log(`[${ucid}] 📝 User said: "${transcript}"`);
                   
-                  // 🆕 NEW: Hybrid processing - Agent + Fallback
+                  // 🆕 NEW: Simple agent processing with fallback
                   if (session && transcript.trim()) {
                     console.log(`[${ucid}] 🔍 Processing transcript: "${transcript}"`);
                     
-                    // Try agent processing first
-                    const agentSuccess = await processTranscriptWithAgent(session, transcript);
-                    
-                    if (!agentSuccess) {
-                      // Fallback to existing regex extraction
-                      console.log(`[${ucid}] 🔄 Agent processing failed, using regex fallback`);
-                      extractSalesData(session, transcript);
-                    } else {
-                      console.log(`[${ucid}] ✅ Agent processing successful`);
+                    // Try agent processing
+                    if (transcriptAgent && transcriptAgent.processTranscript) {
+                      transcriptAgent.processTranscript(transcript, session.salesData || {})
+                        .then((result: any) => {
+                          if (result) {
+                            console.log(`[${ucid}] ✅ Agent processed: "${transcript}"`);
+                          } else {
+                            console.log(`[${ucid}] 🔄 Agent returned null, using regex fallback`);
+                          }
+                        })
+                        .catch((err: any) => {
+                          console.log(`[${ucid}] 🔄 Agent failed, using regex fallback`);
+                        });
                     }
+                    
+                    // Always run regex extraction as well (for now)
+                    extractSalesData(session, transcript);
                   } else if (!transcript.trim()) {
                     console.log(`[${ucid}] ⚠️ Empty transcript received`);
                   }
