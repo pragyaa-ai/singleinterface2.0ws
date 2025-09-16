@@ -1,70 +1,59 @@
-const { Agent, run, tool } = require('@openai/agents');
-const { z } = require('zod');
+// Bridge to load ES module OpenAI Agent
+const { spawn } = require('child_process');
+const path = require('path');
 
-// Sales data extraction tool following OpenAI SDK patterns
-const extractSalesDataTool = tool({
-  name: 'extract_sales_data',
-  description: 'Extract sales data from customer transcript with confidence scoring',
-  parameters: z.object({
-    full_name: z.string().optional().describe('Customer complete name if clearly mentioned'),
-    car_model: z.string().optional().describe('Specific car model if mentioned'),
-    email_id: z.string().optional().describe('Email address if provided'),
-    confidence: z.number().min(0).max(1).describe('Overall confidence score for this extraction (0-1)'),
-    notes: z.string().optional().describe('Additional context or observations')
-  }),
-  execute: async (input) => {
-    console.log('🎯 Tool executed with:', input);
-    return { success: true, data: input };
-  }
-});
-
-// Simple transcript processing agent
-const transcriptDataAgent = new Agent({
-  name: 'TranscriptProcessor',
-  instructions: `
-You are a sales data extraction specialist. Extract these specific data points from customer transcripts:
-
-1. **full_name**: Customer's complete name (first and last name)
-2. **car_model**: Specific car model they want (e.g., "Toyota Camry", "Honda Civic")  
-3. **email_id**: Customer's email address
-
-RULES:
-- Only extract if information is clearly and explicitly mentioned
-- Provide confidence score 0-1 (1.0 = completely certain)
-- If information is unclear or ambiguous, set confidence < 0.7
-- Don't make assumptions or infer information
-
-Use the extract_sales_data tool when you find any sales information.
-`,
-  tools: [extractSalesDataTool]
-});
-
-/**
- * Process a transcript to extract sales data
- * @param {string} transcript - The customer transcript to process
- * @param {Object} sessionData - Current session data for context
- * @returns {Promise<Object|null>} Extracted data or null if processing failed
- */
 async function processTranscript(transcript, sessionData = {}) {
-  try {
-    console.log(`🤖 Agent processing: "${transcript}"`);
-    
-    const context = `
-Previous data: Name=${sessionData.full_name || 'none'}, Car=${sessionData.car_model || 'none'}, Email=${sessionData.email_id || 'none'}
-New transcript: "${transcript}"
-
-Extract any new sales data from this transcript using the extract_sales_data tool with appropriate confidence scores.
-`;
-    
-    const result = await run(transcriptDataAgent, context);
-    console.log('✅ Agent result:', result.finalOutput);
-    
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Agent processing failed:', error.message);
-    return null;
-  }
+  return new Promise((resolve) => {
+    try {
+      console.log(`🤖 Running OpenAI Agent: "${transcript}"`);
+      
+      const agentPath = path.join(__dirname, 'agentRunner.mjs');
+      const child = spawn('node', [agentPath, transcript], {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      
+      let output = '';
+      let errorOutput = '';
+      
+      child.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+      
+      child.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+      });
+      
+      child.on('close', (code) => {
+        if (code === 0 && output) {
+          try {
+            const result = JSON.parse(output);
+            console.log(`✅ OpenAI Agent result:`, result);
+            resolve(result);
+          } catch (e) {
+            console.log(`🔄 Agent output parse failed, using fallback`);
+            resolve(null);
+          }
+        } else {
+          console.log(`🔄 Agent process failed (code: ${code}), using fallback`);
+          if (errorOutput) {
+            console.log(`🔄 Agent error:`, errorOutput.trim());
+          }
+          resolve(null);
+        }
+      });
+      
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        child.kill();
+        console.log(`🔄 Agent timeout, using fallback`);
+        resolve(null);
+      }, 10000);
+      
+    } catch (error) {
+      console.log(`🔄 Agent spawn failed: ${error.message}`);
+      resolve(null);
+    }
+  });
 }
 
 module.exports = { 
