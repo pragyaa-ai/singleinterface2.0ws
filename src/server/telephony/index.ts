@@ -4,8 +4,15 @@ import WebSocket, { WebSocketServer } from 'ws';
 import fs from 'fs';
 import path from 'path';
 import { int16ArrayToBase64, ensureInt16Array, upsample8kTo24k, downsample24kTo8k } from './audio';
-// 🆕 NEW: OpenAI Agents SDK for intelligent transcript processing
-import { Agent, run, tool } from '@openai/agents';
+
+// 🆕 NEW: Simple transcript agent integration
+let transcriptAgent: any = null;
+try {
+  transcriptAgent = require('./agents/transcriptAgent');
+  console.log('📱 Transcript agent loaded successfully');
+} catch (error) {
+  console.log('⚠️ Transcript agent not available, using regex fallback only');
+}
 
 interface OzonetelMediaPacket {
   event: string;
@@ -939,6 +946,7 @@ async function handleConnection(ws: WebSocket) {
               
               if (event.type === 'conversation.item.input_audio_transcription.completed') {
                 console.log(`[${ucid}] 📝 Transcription completed:`, event.transcript);
+                
                 // Track transcripts for enhanced function call argument extraction
                 if (session && event.transcript) {
                   session.transcripts.push(event.transcript);
@@ -947,6 +955,32 @@ async function handleConnection(ws: WebSocket) {
                     session.transcripts = session.transcripts.slice(-5);
                   }
                   console.log(`[${ucid}] 📚 Transcripts buffer:`, session.transcripts);
+                  
+                  // 🆕 NEW: Try agent processing for intelligent data extraction
+                  if (transcriptAgent && transcriptAgent.processTranscript) {
+                    console.log(`[${ucid}] 🤖 Attempting agent processing...`);
+                    
+                    transcriptAgent.processTranscript(event.transcript, session.salesData)
+                      .then((agentResult: any) => {
+                        if (agentResult) {
+                          console.log(`[${ucid}] ✅ Agent processing successful`);
+                          // Here we would process the agent result, but for now just log it
+                          console.log(`[${ucid}] 📊 Agent result available`);
+                        } else {
+                          console.log(`[${ucid}] 🔄 Agent processing returned null, using regex fallback`);
+                          // The existing regex extraction will still run separately
+                        }
+                      })
+                      .catch((error: any) => {
+                        console.log(`[${ucid}] ❌ Agent processing failed:`, error.message);
+                      });
+                  }
+                  
+                  // 🆕 NEW: Collect analytics using OpenAI timestamps
+                  const timestamp = Date.now();
+                  const duration = event.usage?.seconds || 0;
+                  
+                  console.log(`[${ucid}] 📊 Analytics: "${event.transcript}" (${duration}s) [${event.event_id}]`);
                 }
               }
               
