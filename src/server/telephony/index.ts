@@ -400,6 +400,60 @@ function saveSalesDataToFile(session: Session) {
 }
 
 // Check if all required data is collected
+function parseAgentOutput(output: string): { full_name?: string, car_model?: string, email_id?: string } | null {
+  if (!output) return null;
+  
+  const result: { full_name?: string, car_model?: string, email_id?: string } = {};
+  
+  // Extract full name
+  const namePatterns = [
+    /(?:Full Name|Name):\s*([A-Za-z\s.]+?)(?:\n|$)/i,
+    /(?:full name|name):\s*([A-Za-z\s.]+?)(?:\n|$)/i,
+    /- Full Name:\s*([A-Za-z\s.]+?)(?:\n|$)/i
+  ];
+  
+  for (const pattern of namePatterns) {
+    const nameMatch = output.match(pattern);
+    if (nameMatch && nameMatch[1].trim() && nameMatch[1].trim() !== 'Not captured') {
+      result.full_name = nameMatch[1].trim();
+      break;
+    }
+  }
+  
+  // Extract email ID
+  const emailPatterns = [
+    /(?:Email ID|Email):\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/i,
+    /(?:email id|email):\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/i,
+    /- Email ID:\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/i
+  ];
+  
+  for (const pattern of emailPatterns) {
+    const emailMatch = output.match(pattern);
+    if (emailMatch && emailMatch[1]) {
+      result.email_id = emailMatch[1];
+      break;
+    }
+  }
+  
+  // Extract car model
+  const carPatterns = [
+    /(?:Car Model|Car):\s*([A-Za-z0-9\s.]+?)(?:\n|$)/i,
+    /(?:car model|car):\s*([A-Za-z0-9\s.]+?)(?:\n|$)/i,
+    /- Car Model:\s*([A-Za-z0-9\s.]+?)(?:\n|$)/i
+  ];
+  
+  for (const pattern of carPatterns) {
+    const carMatch = output.match(pattern);
+    if (carMatch && carMatch[1].trim() && carMatch[1].trim() !== 'Not captured') {
+      result.car_model = carMatch[1].trim();
+      break;
+    }
+  }
+  
+  // Return result only if we found at least one piece of data
+  return Object.keys(result).length > 0 ? result : null;
+}
+
 function checkDataCompletion(session: Session) {
   const { full_name, car_model, email_id } = session.salesData;
   const ucid = session.ucid;
@@ -770,8 +824,34 @@ async function handleConnection(ws: WebSocket) {
                       .then((agentResult: any) => {
                         if (agentResult) {
                           console.log(`[${ucid}] ✅ Agent processing successful`);
-                          // Here we would process the agent result, but for now just log it
-                          console.log(`[${ucid}] 📊 Agent result available`);
+                          console.log(`[${ucid}] 📊 Agent result:`, agentResult);
+                          
+                          // 🔧 NEW: Extract and integrate the agent's structured data
+                          if (agentResult.state?.currentStep?.output) {
+                            const output = agentResult.state.currentStep.output;
+                            console.log(`[${ucid}] 📝 Agent output:`, output);
+                            
+                            // Extract structured data from the agent output
+                            const extractedData = parseAgentOutput(output);
+                            if (extractedData) {
+                              // Update session data with agent results
+                              if (extractedData.full_name && !session.salesData.full_name) {
+                                session.salesData.full_name = extractedData.full_name;
+                                console.log(`[${ucid}] 🎯 Agent extracted full_name: ${extractedData.full_name}`);
+                              }
+                              if (extractedData.car_model && !session.salesData.car_model) {
+                                session.salesData.car_model = extractedData.car_model;
+                                console.log(`[${ucid}] 🎯 Agent extracted car_model: ${extractedData.car_model}`);
+                              }
+                              if (extractedData.email_id && !session.salesData.email_id) {
+                                session.salesData.email_id = extractedData.email_id;
+                                console.log(`[${ucid}] 🎯 Agent extracted email_id: ${extractedData.email_id}`);
+                              }
+                              
+                              // Check if data collection is now complete
+                              checkDataCompletion(session);
+                            }
+                          }
                         } else {
                           console.log(`[${ucid}] 🔄 Agent processing returned null, using regex fallback`);
                           // The existing regex extraction will still run separately
