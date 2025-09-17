@@ -890,7 +890,7 @@ async function handleConnection(ws: WebSocket) {
                             
                             // Extract structured data from the agent output
                             const extractedData = parseAgentOutput(output);
-                            if (extractedData) {
+                            if (extractedData && session) {
                               // Update session data with agent results
                               if (extractedData.full_name && !session.salesData.full_name) {
                                 session.salesData.full_name = extractedData.full_name;
