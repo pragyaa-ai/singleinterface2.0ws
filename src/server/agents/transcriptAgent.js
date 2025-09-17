@@ -42,12 +42,12 @@ async function processTranscript(transcript, sessionData = {}) {
         }
       });
       
-      // Timeout after 10 seconds
+      // Timeout after 30 seconds (increased for better OpenAI response time)
       setTimeout(() => {
         child.kill();
         console.log(`🔄 Agent timeout, using fallback`);
         resolve(null);
-      }, 10000);
+      }, 30000);
       
     } catch (error) {
       console.log(`🔄 Agent spawn failed: ${error.message}`);
