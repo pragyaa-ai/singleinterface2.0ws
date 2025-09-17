@@ -9,7 +9,8 @@ async function processTranscript(transcript, sessionData = {}) {
       
       const agentPath = path.join(__dirname, 'agentRunner.mjs');
       const child = spawn('node', [agentPath, transcript], {
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, OPENAI_API_KEY: process.env.OPENAI_API_KEY } // Ensure API key is passed
       });
       
       let output = '';
@@ -42,12 +43,12 @@ async function processTranscript(transcript, sessionData = {}) {
         }
       });
       
-      // Timeout after 30 seconds (increased for better OpenAI response time)
+      // Timeout after 60 seconds (increased for better OpenAI response time)
       setTimeout(() => {
         child.kill();
-        console.log(`🔄 Agent timeout, using fallback`);
+        console.log(`🔄 Agent timeout after 60s, using fallback`);
         resolve(null);
-      }, 30000);
+      }, 60000);
       
     } catch (error) {
       console.log(`🔄 Agent spawn failed: ${error.message}`);

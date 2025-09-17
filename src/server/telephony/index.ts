@@ -405,52 +405,83 @@ function parseAgentOutput(output: string): { full_name?: string, car_model?: str
   
   const result: { full_name?: string, car_model?: string, email_id?: string } = {};
   
-  // Extract full name
+  // First try to parse structured JSON if the agent returned it
+  try {
+    // Look for JSON in the output
+    const jsonMatch = output.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.full_name) result.full_name = parsed.full_name;
+      if (parsed.car_model) result.car_model = parsed.car_model;
+      if (parsed.email_id || parsed.email) result.email_id = parsed.email_id || parsed.email;
+      
+      // If we found data in JSON, return it
+      if (Object.keys(result).length > 0) {
+        console.log('📊 Parsed structured JSON from agent:', result);
+        return result;
+      }
+    }
+  } catch (e) {
+    // Fall back to regex parsing
+  }
+  
+  // Extract full name with improved validation
   const namePatterns = [
-    /(?:Full Name|Name):\s*([A-Za-z\s.]+?)(?:\n|$)/i,
-    /(?:full name|name):\s*([A-Za-z\s.]+?)(?:\n|$)/i,
-    /- Full Name:\s*([A-Za-z\s.]+?)(?:\n|$)/i
+    /(?:Full Name|Name):\s*([A-Za-z\s.''-]{2,30})(?:\s*\n|$)/i,
+    /(?:full name|name):\s*([A-Za-z\s.''-]{2,30})(?:\s*\n|$)/i,
+    /- Full Name:\s*([A-Za-z\s.''-]{2,30})(?:\s*\n|$)/i,
+    /\"full_name\":\s*\"([A-Za-z\s.''-]{2,30})\"/i
   ];
   
   for (const pattern of namePatterns) {
     const nameMatch = output.match(pattern);
-    if (nameMatch && nameMatch[1].trim() && nameMatch[1].trim() !== 'Not captured') {
+    if (nameMatch && nameMatch[1].trim() && 
+        nameMatch[1].trim() !== 'Not captured' && 
+        nameMatch[1].trim().length > 1 &&
+        /^[A-Za-z\s.''-]+$/.test(nameMatch[1].trim())) {
       result.full_name = nameMatch[1].trim();
       break;
     }
   }
   
-  // Extract email ID
+  // Extract email ID with stricter validation
   const emailPatterns = [
     /(?:Email ID|Email):\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/i,
     /(?:email id|email):\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/i,
-    /- Email ID:\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/i
+    /- Email ID:\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/i,
+    /\"email_id\":\s*\"([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})\"/i
   ];
   
   for (const pattern of emailPatterns) {
     const emailMatch = output.match(pattern);
-    if (emailMatch && emailMatch[1]) {
+    if (emailMatch && emailMatch[1] && emailMatch[1].includes('@')) {
       result.email_id = emailMatch[1];
       break;
     }
   }
   
-  // Extract car model
+  // Extract car model with better filtering
   const carPatterns = [
-    /(?:Car Model|Car):\s*([A-Za-z0-9\s.]+?)(?:\n|$)/i,
-    /(?:car model|car):\s*([A-Za-z0-9\s.]+?)(?:\n|$)/i,
-    /- Car Model:\s*([A-Za-z0-9\s.]+?)(?:\n|$)/i
+    /(?:Car Model|Car|Vehicle):\s*([A-Za-z0-9\s\-._]{2,40})(?:\s*\n|$)/i,
+    /(?:car model|car|vehicle):\s*([A-Za-z0-9\s\-._]{2,40})(?:\s*\n|$)/i,
+    /- Car Model:\s*([A-Za-z0-9\s\-._]{2,40})(?:\s*\n|$)/i,
+    /\"car_model\":\s*\"([A-Za-z0-9\s\-._]{2,40})\"/i
   ];
   
   for (const pattern of carPatterns) {
     const carMatch = output.match(pattern);
-    if (carMatch && carMatch[1].trim() && carMatch[1].trim() !== 'Not captured') {
+    if (carMatch && carMatch[1].trim() && 
+        carMatch[1].trim() !== 'Not captured' && 
+        carMatch[1].trim().length > 1 &&
+        // Filter out obvious non-car-model responses
+        !['yes', 'no', 'ok', 'hello', 'thanks', 'thank you'].includes(carMatch[1].trim().toLowerCase())) {
       result.car_model = carMatch[1].trim();
       break;
     }
   }
   
-  // Return result only if we found at least one piece of data
+  // Return result only if we found at least one piece of valid data
+  console.log('📊 Parsed agent output:', result);
   return Object.keys(result).length > 0 ? result : null;
 }
 
@@ -716,7 +747,7 @@ async function handleConnection(ws: WebSocket) {
                 if (event.item?.type === 'function_call' && event.item?.name) {
                   console.log(`[${ucid}] 🔧 Function call created: ${event.item.name}`);
                   
-                  let args = {};
+                  let args: any = {};
                   try {
                     args = JSON.parse(event.item.arguments || '{}');
                   } catch (e) {
@@ -724,6 +755,32 @@ async function handleConnection(ws: WebSocket) {
                   }
                   
                   if (session && event.item.name) {
+                    // 🔍 CRITICAL FIX: Check if arguments are meaningful before execution
+                    const hasValidArgs = Object.keys(args).length > 0 && 
+                                        Object.values(args).some(val => val !== null && val !== undefined && val !== '');
+                    
+                    if (!hasValidArgs) {
+                      console.log(`[${ucid}] ⚠️ Skipping function call with empty/invalid args: ${event.item.name}`);
+                      console.log(`[${ucid}] 📝 Recent transcripts for context:`, session.transcripts || []);
+                      
+                      // Send a failure response to OpenAI
+                      if (event.item.call_id) {
+                        openaiWs.send(JSON.stringify({
+                          type: 'conversation.item.create',
+                          item: {
+                            type: 'function_call_output',
+                            call_id: event.item.call_id,
+                            output: JSON.stringify({
+                              success: false,
+                              message: `Function ${event.item.name} called with empty arguments - please provide proper parameters`,
+                              error: 'empty_arguments'
+                            })
+                          }
+                        }));
+                      }
+                      return; // Don't execute the function
+                    }
+                    
                     console.log(`[${ucid}] 🎯 Executing function: ${event.item.name} with args:`, args);
                     
                     const result = handleSDKToolCall(session, {
