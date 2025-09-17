@@ -8,10 +8,20 @@ import { int16ArrayToBase64, ensureInt16Array, upsample8kTo24k, downsample24kTo8
 // 🆕 NEW: Simple transcript agent integration
 let transcriptAgent: any = null;
 try {
+  console.log('🔍 Attempting to load transcript agent from: ./agents/transcriptAgent');
+  console.log('🔍 Current working directory:', process.cwd());
+  console.log('🔍 OPENAI_API_KEY available:', !!process.env.OPENAI_API_KEY);
+  console.log('🔍 OPENAI_API_KEY length:', process.env.OPENAI_API_KEY?.length || 0);
+  
   transcriptAgent = require('./agents/transcriptAgent');
   console.log('📱 Transcript agent loaded successfully');
+  console.log('📱 Agent processTranscript function available:', typeof transcriptAgent.processTranscript);
 } catch (error) {
-  console.log('⚠️ Transcript agent not available, using regex fallback only');
+  console.log('❌ Transcript agent loading failed!');
+  console.log('❌ Error message:', error.message);
+  console.log('❌ Error type:', error.constructor.name);
+  console.log('❌ Full error:', error);
+  console.log('⚠️ Using regex fallback only');
 }
 
 interface OzonetelMediaPacket {
