@@ -16,7 +16,7 @@ try {
   transcriptAgent = require('./agents/transcriptAgent');
   console.log('📱 Transcript agent loaded successfully');
   console.log('📱 Agent processTranscript function available:', typeof transcriptAgent.processTranscript);
-} catch (error) {
+} catch (error: any) {
   console.log('❌ Transcript agent loading failed!');
   console.log('❌ Error message:', error.message);
   console.log('❌ Error type:', error.constructor.name);
