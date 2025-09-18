@@ -5,24 +5,8 @@ import fs from 'fs';
 import path from 'path';
 import { int16ArrayToBase64, ensureInt16Array, upsample8kTo24k, downsample24kTo8k } from './audio';
 
-// 🆕 NEW: Simple transcript agent integration
-let transcriptAgent: any = null;
-try {
-  console.log('🔍 Attempting to load transcript agent from: ../agents/transcriptAgent');
-  console.log('🔍 Current working directory:', process.cwd());
-  console.log('🔍 OPENAI_API_KEY available:', !!process.env.OPENAI_API_KEY);
-  console.log('🔍 OPENAI_API_KEY length:', process.env.OPENAI_API_KEY?.length || 0);
-  
-  transcriptAgent = require('../agents/transcriptAgent');
-  console.log('📱 Transcript agent loaded successfully');
-  console.log('📱 Agent processTranscript function available:', typeof transcriptAgent.processTranscript);
-} catch (error: any) {
-  console.log('❌ Transcript agent loading failed!');
-  console.log('❌ Error message:', error.message);
-  console.log('❌ Error type:', error.constructor.name);
-  console.log('❌ Full error:', error);
-  console.log('⚠️ Using regex fallback only');
-}
+// 🔄 DECOUPLED ARCHITECTURE: Agent processing moved to async service
+// Telephony service now focuses only on call handling and transcript collection
 
 interface OzonetelMediaPacket {
   event: string;
@@ -63,6 +47,14 @@ interface CallAnalytics {
   currentQuestionStart?: number;
 }
 
+interface TranscriptEntry {
+  timestamp: string;
+  speaker: 'user' | 'assistant';
+  text: string;
+  confidence?: number;
+  event_type?: string;
+}
+
 interface Session {
   ucid: string;
   client: WebSocket;
@@ -74,10 +66,11 @@ interface Session {
     car_model?: string;
     email_id?: string;
     verified: Set<string>;
+    processing_status?: 'pending' | 'processing' | 'completed' | 'failed';
   };
-  transcripts: string[];
+  transcripts: string[]; // Keep for backward compatibility
+  fullTranscript: TranscriptEntry[]; // 🔄 NEW: Rich transcript with timestamps
   lastCapturedData?: string;
-  // 🆕 NEW: Optional call analytics (non-breaking)
   callAnalytics?: CallAnalytics;
 }
 
@@ -89,11 +82,18 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 
 const sessions = new Map<string, Session>();
 
-// Ensure data directory exists
+// 🔄 ENHANCED: Ensure all data directories exist for decoupled architecture
 const dataDir = path.join(process.cwd(), 'data', 'calls');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
+const transcriptsDir = path.join(process.cwd(), 'data', 'transcripts');
+const processingDir = path.join(process.cwd(), 'data', 'processing');
+const resultsDir = path.join(process.cwd(), 'data', 'results');
+
+[dataDir, transcriptsDir, processingDir, resultsDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log(`📁 Created directory: ${dir}`);
+  }
+});
 
 // 🎯 AGENTS SDK TOOLS - Ported for telephony use
 const telephonySDKTools = [
@@ -275,14 +275,15 @@ function extractSalesData(session: Session, transcript: string) {
   // 🔧 CRITICAL FIX: Extract name patterns (allow overwriting for repeated info)
   console.log(`[${ucid}] 🔍 Attempting name extraction...`);
   const namePatterns = [
-    /my name is ([a-zA-Z\s]+)/i,
-    /i am ([a-zA-Z\s]+)/i,
-    /i'm ([a-zA-Z\s]+)/i,
-    /this is ([a-zA-Z\s]+)/i,
-    /call me ([a-zA-Z\s]+)/i,
+    /my name is ([a-zA-Z\s\.]+)/i,
+    /i am ([a-zA-Z\s\.]+)/i,
+    /i'm ([a-zA-Z\s\.]+)/i,
+    /this is ([a-zA-Z\s\.]+)/i,
+    /call me ([a-zA-Z\s\.]+)/i,
+    /it is ([a-zA-Z\s\.]+)/i, // 🆕 NEW: Handle "It is [name]" format
     // 🆕 NEW: Additional patterns for repeated names
-    /name[:\s]+([a-zA-Z\s]+)/i,
-    /([a-zA-Z]{2,}\s+[a-zA-Z]{2,})/i // Simple two-word name pattern
+    /name[:\s]+([a-zA-Z\s\.]+)/i,
+    /([a-zA-Z]{2,}\.?[a-zA-Z]*\s+[a-zA-Z]{2,})/i // Two-word name pattern with optional dot
   ];
   
   for (const pattern of namePatterns) {
@@ -339,16 +340,110 @@ function extractSalesData(session: Session, transcript: string) {
   
   // 🔧 CRITICAL FIX: Extract email patterns (allow overwriting for repeated info)
   console.log(`[${ucid}] 🔍 Attempting email extraction...`);
-  const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
-  const match = transcript.match(emailPattern);
-  if (match) {
-    const oldEmail = session.salesData.email_id;
-    session.salesData.email_id = match[0];
-    console.log(`[${ucid}] 📧 Captured Email: ${match[0]}${oldEmail ? ` (updated from: ${oldEmail})` : ''}`);
+  
+  // Handle both "user@domain.com" and "user.name at domain.com" formats
+  const emailPatterns = [
+    /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/, // Standard format
+    /\b([A-Za-z0-9._%+-]+)\s+at\s+([A-Za-z0-9.-]+\.[A-Z|a-z]{2,})\b/i // "name at domain.com" format
+  ];
+  
+  for (const pattern of emailPatterns) {
+    const match = transcript.match(pattern);
+    if (match) {
+      let email;
+      if (match.length === 1) {
+        // Standard email format
+        email = match[0];
+      } else if (match.length >= 3) {
+        // "name at domain.com" format - reconstruct with @
+        email = `${match[1]}@${match[2]}`;
+      }
+      
+      if (email) {
+        const oldEmail = session.salesData.email_id;
+        session.salesData.email_id = email;
+        console.log(`[${ucid}] 📧 Captured Email: ${email}${oldEmail ? ` (updated from: ${oldEmail})` : ''}`);
+        break;
+      }
+    }
   }
   
   // Check completion
   checkDataCompletion(session);
+}
+
+// 🔄 NEW: Save complete transcript for async processing
+function saveTranscriptForProcessing(session: Session) {
+  const ucid = session.ucid;
+  const timestamp = Date.now();
+  
+  // Create transcript file data
+  const transcriptData = {
+    call_id: ucid,
+    timestamp: new Date().toISOString(),
+    call_start_time: session.callAnalytics?.callStartTime || timestamp,
+    call_end_time: timestamp,
+    call_duration: session.callAnalytics?.callStartTime ? 
+      timestamp - session.callAnalytics.callStartTime : 0,
+    
+    // Full conversation with timestamps
+    conversation: session.fullTranscript,
+    
+    // Backward compatibility - simple transcript array
+    simple_transcripts: session.transcripts,
+    
+    // Current sales data (partial or complete)
+    current_sales_data: {
+      full_name: session.salesData.full_name || null,
+      car_model: session.salesData.car_model || null,
+      email_id: session.salesData.email_id || null,
+      verified_fields: Array.from(session.salesData.verified || []),
+      processing_status: 'pending'
+    },
+    
+    // Call analytics
+    analytics: session.callAnalytics ? {
+      total_exchanges: session.fullTranscript.length,
+      user_messages: session.fullTranscript.filter(t => t.speaker === 'user').length,
+      assistant_messages: session.fullTranscript.filter(t => t.speaker === 'assistant').length,
+      question_answer_pairs: session.callAnalytics.questionAnswerPairs?.length || 0,
+      parameters_attempted: Array.from(session.callAnalytics.parametersAttempted || []),
+      parameters_captured: Array.from(session.callAnalytics.parametersCaptured || [])
+    } : null
+  };
+  
+  // Save transcript file
+  const transcriptFilename = `call_${ucid}_${timestamp}_transcript.json`;
+  const transcriptPath = path.join(transcriptsDir, transcriptFilename);
+  
+  try {
+    fs.writeFileSync(transcriptPath, JSON.stringify(transcriptData, null, 2));
+    console.log(`[${ucid}] 📄 Transcript saved: ${transcriptFilename}`);
+    
+    // Create processing queue entry
+    const queueData = {
+      call_id: ucid,
+      transcript_file: transcriptFilename,
+      created_at: new Date().toISOString(),
+      status: 'pending',
+      priority: 'normal'
+    };
+    
+    const queueFilename = `call_${ucid}_${timestamp}_queue.json`;
+    const queuePath = path.join(processingDir, queueFilename);
+    
+    fs.writeFileSync(queuePath, JSON.stringify(queueData, null, 2));
+    console.log(`[${ucid}] 📋 Processing queue entry created: ${queueFilename}`);
+    
+    // Update session status
+    session.salesData.processing_status = 'pending';
+    
+    return { transcriptFile: transcriptFilename, queueFile: queueFilename };
+    
+  } catch (error) {
+    console.error(`[${ucid}] ❌ Failed to save transcript:`, error);
+    return null;
+  }
 }
 
 // Save sales data to local file
@@ -696,9 +791,11 @@ async function handleConnection(ws: WebSocket) {
             receivedFirstPacket: false,
             inputFrameBuffer: [],
             salesData: {
-              verified: new Set<string>()
+              verified: new Set<string>(),
+              processing_status: 'pending' // 🔄 NEW: Track async processing status
             },
-            transcripts: [],
+            transcripts: [], // Keep for backward compatibility
+            fullTranscript: [], // 🔄 NEW: Rich transcript with timestamps
             lastCapturedData: undefined,
             // 🆕 NEW: Initialize call analytics
             callAnalytics: {
@@ -882,9 +979,21 @@ async function handleConnection(ws: WebSocket) {
                 }
               }
               
-              // 🔍 ENHANCED: Log response events
+              // 🔍 ENHANCED: Log response events and capture in rich transcript
               if (event.type === 'response.text.done') {
                 console.log(`[${ucid}] 🤖 Assistant response:`, event.text);
+                
+                // 🔄 NEW: Add assistant response to rich transcript
+                if (session && event.text) {
+                  const assistantEntry: TranscriptEntry = {
+                    timestamp: new Date().toISOString(),
+                    speaker: 'assistant',
+                    text: event.text,
+                    event_type: 'response_text_done'
+                  };
+                  session.fullTranscript.push(assistantEntry);
+                  console.log(`[${ucid}] 📋 Assistant response added to rich transcript`);
+                }
               }
               
               if (event.type === 'response.text.delta') {
@@ -911,67 +1020,30 @@ async function handleConnection(ws: WebSocket) {
               if (event.type === 'conversation.item.input_audio_transcription.completed') {
                 console.log(`[${ucid}] 📝 Transcription completed:`, event.transcript);
                 
-                // Track transcripts for enhanced function call argument extraction
+                // 🔄 ENHANCED: Track both simple and rich transcripts
                 if (session && event.transcript) {
+                  // Keep backward compatibility
                   session.transcripts.push(event.transcript);
                   // Keep only last 5 transcripts to avoid memory issues
                   if (session.transcripts.length > 5) {
                     session.transcripts = session.transcripts.slice(-5);
                   }
-                  console.log(`[${ucid}] 📚 Transcripts buffer:`, session.transcripts);
                   
-                  // 🆕 NEW: Try agent processing for intelligent data extraction
-                  if (transcriptAgent && transcriptAgent.processTranscript) {
-                    console.log(`[${ucid}] 🤖 Attempting agent processing...`);
-                    
-                    // 🔧 CRITICAL FIX: Pass full conversation context instead of just current transcript
-                    const fullConversation = session.transcripts.join(' ');
-                    console.log(`[${ucid}] 📚 Full conversation context:`, fullConversation);
-                    
-                    transcriptAgent.processTranscript(fullConversation, session.salesData)
-                      .then((agentResult: any) => {
-                        if (agentResult) {
-                          console.log(`[${ucid}] ✅ Agent processing successful`);
-                          console.log(`[${ucid}] 📊 Agent result:`, agentResult);
-                          
-                          // 🔧 NEW: Extract and integrate the agent's structured data
-                          if (agentResult.state?.currentStep?.output) {
-                            const output = agentResult.state.currentStep.output;
-                            console.log(`[${ucid}] 📝 Agent output:`, output);
-                            
-                            // Extract structured data from the agent output
-                            const extractedData = parseAgentOutput(output);
-                            if (extractedData && session) {
-                              // 🔧 CRITICAL FIX: Update session data with agent results (allow overwriting for repeated info)
-                              if (extractedData.full_name) {
-                                const oldName = session.salesData.full_name;
-                                session.salesData.full_name = extractedData.full_name;
-                                console.log(`[${ucid}] 🎯 Agent extracted full_name: ${extractedData.full_name}${oldName ? ` (updated from: ${oldName})` : ''}`);
-                              }
-                              if (extractedData.car_model && extractedData.car_model !== 'Not specified') {
-                                const oldModel = session.salesData.car_model;
-                                session.salesData.car_model = extractedData.car_model;
-                                console.log(`[${ucid}] 🎯 Agent extracted car_model: ${extractedData.car_model}${oldModel ? ` (updated from: ${oldModel})` : ''}`);
-                              }
-                              if (extractedData.email_id && extractedData.email_id !== 'Not specified') {
-                                const oldEmail = session.salesData.email_id;
-                                session.salesData.email_id = extractedData.email_id;
-                                console.log(`[${ucid}] 🎯 Agent extracted email_id: ${extractedData.email_id}${oldEmail ? ` (updated from: ${oldEmail})` : ''}`);
-                              }
-                              
-                              // Check if data collection is now complete
-                              checkDataCompletion(session);
-                            }
-                          }
-                        } else {
-                          console.log(`[${ucid}] 🔄 Agent processing returned null, using regex fallback`);
-                          // The existing regex extraction will still run separately
-                        }
-                      })
-                      .catch((error: any) => {
-                        console.log(`[${ucid}] ❌ Agent processing failed:`, error.message);
-                      });
-                  }
+                  // 🔄 NEW: Rich transcript with timestamps
+                  const transcriptEntry: TranscriptEntry = {
+                    timestamp: new Date().toISOString(),
+                    speaker: 'user',
+                    text: event.transcript,
+                    confidence: event.confidence || 0.9,
+                    event_type: 'transcription_completed'
+                  };
+                  session.fullTranscript.push(transcriptEntry);
+                  
+                  console.log(`[${ucid}] 📚 Transcripts buffer:`, session.transcripts);
+                  console.log(`[${ucid}] 📋 Rich transcript entries:`, session.fullTranscript.length);
+                  
+                  // 🔄 DECOUPLED: Real-time processing removed - will be handled by async processor
+                  console.log(`[${ucid}] 📤 Transcript collected for async processing`);
                   
                   // 🆕 NEW: Collect analytics using OpenAI timestamps
                   const timestamp = Date.now();
@@ -1075,10 +1147,18 @@ async function handleConnection(ws: WebSocket) {
 
   ws.on('close', () => {
     if (session) {
-      // Save any partial data collected before connection closes
+      console.log(`[${session.ucid}] 🔌 Connection closed - processing call data`);
+      
+      // 🔄 NEW: Save complete transcript for async processing
+      const transcriptResult = saveTranscriptForProcessing(session);
+      if (transcriptResult) {
+        console.log(`[${session.ucid}] ✅ Transcript saved for async processing`);
+      }
+      
+      // Keep existing logic for immediate partial data saving (backward compatibility)
       const { full_name, car_model, email_id } = session.salesData;
       if (full_name || car_model || email_id) {
-        console.log(`[${session.ucid}] 🔌 Connection closed - saving partial data`);
+        console.log(`[${session.ucid}] 💾 Saving immediate partial data`);
         saveSalesDataToFile(session);
       }
       
