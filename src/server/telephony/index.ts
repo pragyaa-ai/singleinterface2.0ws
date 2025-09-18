@@ -272,54 +272,61 @@ function extractSalesData(session: Session, transcript: string) {
   console.log(`[${ucid}] 🔍 Starting data extraction from: "${transcript}"`);
   console.log(`[${ucid}] 🔍 Lowercase text: "${text}"`);
   
-  // Extract name patterns
-  if (!session.salesData.full_name) {
-    console.log(`[${ucid}] 🔍 Attempting name extraction...`);
-    const namePatterns = [
-      /my name is ([a-zA-Z\s]+)/i,
-      /i am ([a-zA-Z\s]+)/i,
-      /i'm ([a-zA-Z\s]+)/i,
-      /this is ([a-zA-Z\s]+)/i,
-      /call me ([a-zA-Z\s]+)/i
-    ];
-    
-    for (const pattern of namePatterns) {
-      const match = transcript.match(pattern);
-      if (match && match[1]) {
-        const name = match[1].trim();
-        if (name.length > 2 && name.length < 50) {
-          session.salesData.full_name = name;
-          console.log(`[${ucid}] 📝 Captured Name: ${name}`);
-          break;
-        }
+  // 🔧 CRITICAL FIX: Extract name patterns (allow overwriting for repeated info)
+  console.log(`[${ucid}] 🔍 Attempting name extraction...`);
+  const namePatterns = [
+    /my name is ([a-zA-Z\s]+)/i,
+    /i am ([a-zA-Z\s]+)/i,
+    /i'm ([a-zA-Z\s]+)/i,
+    /this is ([a-zA-Z\s]+)/i,
+    /call me ([a-zA-Z\s]+)/i,
+    // 🆕 NEW: Additional patterns for repeated names
+    /name[:\s]+([a-zA-Z\s]+)/i,
+    /([a-zA-Z]{2,}\s+[a-zA-Z]{2,})/i // Simple two-word name pattern
+  ];
+  
+  for (const pattern of namePatterns) {
+    const match = transcript.match(pattern);
+    if (match && match[1]) {
+      const name = match[1].trim();
+      if (name.length > 2 && name.length < 50 && !name.includes('hello') && !name.includes('yes') && !name.includes('ok')) {
+        const oldName = session.salesData.full_name;
+        session.salesData.full_name = name;
+        console.log(`[${ucid}] 📝 Captured Name: ${name}${oldName ? ` (updated from: ${oldName})` : ''}`);
+        break;
       }
     }
   }
   
-  // Extract car model patterns
-  if (!session.salesData.car_model) {
-    const carBrands = ['toyota', 'honda', 'maruti', 'hyundai', 'tata', 'mahindra', 'ford', 'chevrolet', 'volkswagen', 'bmw', 'mercedes', 'audi', 'nissan', 'kia'];
-    const carModels = ['swift', 'baleno', 'dzire', 'vitara', 'ciaz', 'ertiga', 'xl6', 'brezza', 'city', 'amaze', 'jazz', 'wr-v', 'civic', 'accord', 'camry', 'innova', 'fortuner', 'corolla', 'i10', 'i20', 'venue', 'creta', 'verna', 'tucson', 'elantra', 'santafe'];
-    
-    for (const brand of carBrands) {
-      if (text.includes(brand)) {
-        for (const model of carModels) {
-          if (text.includes(model)) {
-            const carModel = `${brand.charAt(0).toUpperCase() + brand.slice(1)} ${model.charAt(0).toUpperCase() + model.slice(1)}`;
-            session.salesData.car_model = carModel;
-            console.log(`[${ucid}] 🚗 Captured Car Model: ${carModel}`);
-            return;
-          }
+  // 🔧 CRITICAL FIX: Extract car model patterns (allow overwriting for repeated info)
+  console.log(`[${ucid}] 🔍 Attempting car model extraction...`);
+  const carBrands = ['toyota', 'honda', 'maruti', 'hyundai', 'tata', 'mahindra', 'ford', 'chevrolet', 'volkswagen', 'bmw', 'mercedes', 'audi', 'nissan', 'kia'];
+  const carModels = ['swift', 'baleno', 'dzire', 'vitara', 'ciaz', 'ertiga', 'xl6', 'brezza', 'city', 'amaze', 'jazz', 'wr-v', 'civic', 'accord', 'camry', 'innova', 'fortuner', 'corolla', 'i10', 'i20', 'venue', 'creta', 'verna', 'tucson', 'elantra', 'santafe'];
+  
+  for (const brand of carBrands) {
+    if (text.includes(brand)) {
+      for (const model of carModels) {
+        if (text.includes(model)) {
+          const carModel = `${brand.charAt(0).toUpperCase() + brand.slice(1)} ${model.charAt(0).toUpperCase() + model.slice(1)}`;
+          const oldModel = session.salesData.car_model;
+          session.salesData.car_model = carModel;
+          console.log(`[${ucid}] 🚗 Captured Car Model: ${carModel}${oldModel ? ` (updated from: ${oldModel})` : ''}`);
+          checkDataCompletion(session);
+          return;
         }
-        // Just brand mentioned
-        const brandName = brand.charAt(0).toUpperCase() + brand.slice(1);
-        session.salesData.car_model = brandName;
-        console.log(`[${ucid}] 🚗 Captured Car Brand: ${brandName}`);
-        return;
       }
+      // Just brand mentioned
+      const brandName = brand.charAt(0).toUpperCase() + brand.slice(1);
+      const oldModel = session.salesData.car_model;
+      session.salesData.car_model = brandName;
+      console.log(`[${ucid}] 🚗 Captured Car Brand: ${brandName}${oldModel ? ` (updated from: ${oldModel})` : ''}`);
+      checkDataCompletion(session);
+      return;
     }
-    
-    // Generic car interest
+  }
+  
+  // Generic car interest (only if no specific car is already captured)
+  if (!session.salesData.car_model) {
     const carKeywords = ['car', 'vehicle', 'auto', 'sedan', 'suv', 'hatchback'];
     for (const keyword of carKeywords) {
       if (text.includes(keyword)) {
@@ -330,14 +337,14 @@ function extractSalesData(session: Session, transcript: string) {
     }
   }
   
-  // Extract email patterns
-  if (!session.salesData.email_id) {
-    const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
-    const match = transcript.match(emailPattern);
-    if (match) {
-      session.salesData.email_id = match[0];
-      console.log(`[${ucid}] 📧 Captured Email: ${match[0]}`);
-    }
+  // 🔧 CRITICAL FIX: Extract email patterns (allow overwriting for repeated info)
+  console.log(`[${ucid}] 🔍 Attempting email extraction...`);
+  const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
+  const match = transcript.match(emailPattern);
+  if (match) {
+    const oldEmail = session.salesData.email_id;
+    session.salesData.email_id = match[0];
+    console.log(`[${ucid}] 📧 Captured Email: ${match[0]}${oldEmail ? ` (updated from: ${oldEmail})` : ''}`);
   }
   
   // Check completion
@@ -887,7 +894,11 @@ async function handleConnection(ws: WebSocket) {
                   if (transcriptAgent && transcriptAgent.processTranscript) {
                     console.log(`[${ucid}] 🤖 Attempting agent processing...`);
                     
-                    transcriptAgent.processTranscript(event.transcript, session.salesData)
+                    // 🔧 CRITICAL FIX: Pass full conversation context instead of just current transcript
+                    const fullConversation = session.transcripts.join(' ');
+                    console.log(`[${ucid}] 📚 Full conversation context:`, fullConversation);
+                    
+                    transcriptAgent.processTranscript(fullConversation, session.salesData)
                       .then((agentResult: any) => {
                         if (agentResult) {
                           console.log(`[${ucid}] ✅ Agent processing successful`);
@@ -901,18 +912,21 @@ async function handleConnection(ws: WebSocket) {
                             // Extract structured data from the agent output
                             const extractedData = parseAgentOutput(output);
                             if (extractedData && session) {
-                              // Update session data with agent results
-                              if (extractedData.full_name && !session.salesData.full_name) {
+                              // 🔧 CRITICAL FIX: Update session data with agent results (allow overwriting for repeated info)
+                              if (extractedData.full_name) {
+                                const oldName = session.salesData.full_name;
                                 session.salesData.full_name = extractedData.full_name;
-                                console.log(`[${ucid}] 🎯 Agent extracted full_name: ${extractedData.full_name}`);
+                                console.log(`[${ucid}] 🎯 Agent extracted full_name: ${extractedData.full_name}${oldName ? ` (updated from: ${oldName})` : ''}`);
                               }
-                              if (extractedData.car_model && !session.salesData.car_model) {
+                              if (extractedData.car_model && extractedData.car_model !== 'Not specified') {
+                                const oldModel = session.salesData.car_model;
                                 session.salesData.car_model = extractedData.car_model;
-                                console.log(`[${ucid}] 🎯 Agent extracted car_model: ${extractedData.car_model}`);
+                                console.log(`[${ucid}] 🎯 Agent extracted car_model: ${extractedData.car_model}${oldModel ? ` (updated from: ${oldModel})` : ''}`);
                               }
-                              if (extractedData.email_id && !session.salesData.email_id) {
+                              if (extractedData.email_id && extractedData.email_id !== 'Not specified') {
+                                const oldEmail = session.salesData.email_id;
                                 session.salesData.email_id = extractedData.email_id;
-                                console.log(`[${ucid}] 🎯 Agent extracted email_id: ${extractedData.email_id}`);
+                                console.log(`[${ucid}] 🎯 Agent extracted email_id: ${extractedData.email_id}${oldEmail ? ` (updated from: ${oldEmail})` : ''}`);
                               }
                               
                               // Check if data collection is now complete
