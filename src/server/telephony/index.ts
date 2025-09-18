@@ -952,30 +952,13 @@ async function handleConnection(ws: WebSocket) {
                   const transcript = event.item?.content?.[0]?.transcript || '';
                   console.log(`[${ucid}] 📝 User said: "${transcript}"`);
                   
-                  // 🆕 NEW: Simple agent processing with fallback
-                  if (session && transcript.trim()) {
-                    console.log(`[${ucid}] 🔍 Processing transcript: "${transcript}"`);
-                    
-                    // Try agent processing
-                    if (transcriptAgent && transcriptAgent.processTranscript) {
-                      transcriptAgent.processTranscript(transcript, session.salesData || {})
-                        .then((result: any) => {
-                          if (result) {
-                            console.log(`[${ucid}] ✅ Agent processed: "${transcript}"`);
-                          } else {
-                            console.log(`[${ucid}] 🔄 Agent returned null, using regex fallback`);
-                          }
-                        })
-                        .catch((err: any) => {
-                          console.log(`[${ucid}] 🔄 Agent failed, using regex fallback`);
-                        });
-                    }
-                    
-                    // Always run regex extraction as well (for now)
-                    extractSalesData(session, transcript);
-                  } else if (!transcript.trim()) {
-                    console.log(`[${ucid}] ⚠️ Empty transcript received`);
-                  }
+                // 🔄 DECOUPLED: No real-time processing - transcripts collected for async processing
+                if (session && transcript.trim()) {
+                  console.log(`[${ucid}] 📝 Transcript collected: "${transcript}"`);
+                  // Note: Actual data extraction will happen via async agent processor on call end
+                } else if (!transcript.trim()) {
+                  console.log(`[${ucid}] ⚠️ Empty transcript received`);
+                }
                 }
               }
               
