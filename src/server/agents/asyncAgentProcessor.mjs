@@ -19,7 +19,7 @@ const extractCompleteDataTool = tool({
       car_confidence: z.number().min(0).max(1).default(0.8).describe('Confidence in car model extraction'),
       email_confidence: z.number().min(0).max(1).default(0.8).describe('Confidence in email extraction')
     }).default({}),
-    extraction_notes: z.string().optional().describe('Notes about extraction challenges or ambiguities'),
+    extraction_notes: z.string().nullable().optional().describe('Notes about extraction challenges or ambiguities'),
     conversation_quality: z.enum(['excellent', 'good', 'fair', 'poor']).default('good').describe('Overall conversation quality assessment')
   }),
   execute: async (input) => {
