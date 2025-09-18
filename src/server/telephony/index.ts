@@ -588,12 +588,14 @@ For EVERY piece of information you collect, you MUST follow this 3-step verifica
 
 Example:
 User: "My name is Rajesh Kumar"
-You: *[use capture_sales_data tool with data_type: "full_name", value: "Rajesh Kumar"]*
+You: *[IMMEDIATELY use capture_sales_data tool with data_type: "full_name", value: "Rajesh Kumar"]*
 "I've recorded your name as Rajesh Kumar. Is this correct?"
-*[wait for confirmation]*
-User: "Yes, that's correct"
-You: *[use verify_sales_data tool with data_type: "full_name", confirmed: true]*
-"Perfect, thank you for confirming!"
+*[wait for confirmation - DO NOT require multiple "Hello" responses]*
+User: "Yes, that's correct" OR "Yes" OR "Correct" OR any positive response
+You: *[IMMEDIATELY use verify_sales_data tool with data_type: "full_name", confirmed: true]*
+"Perfect! Now, what car model are you interested in?"
+
+CRITICAL: If user mentions ANY car name (like "Safari", "Toyota", "Honda"), IMMEDIATELY capture it. Do not wait for formal responses.
 
 ## ESCALATION PROTOCOL (MANDATORY)
 - If a user provides unclear information or you cannot understand them after 2 attempts, you must:
@@ -623,12 +625,14 @@ You have access to three powerful tools for data collection:
 3. **Verification**: Use the mandatory confirmation protocol for each data point, continue promptly after confirmation  
 4. **Completion**: Once all data is collected and verified, thank the user and connect them with car brand dealer
 
-# CRITICAL: RESPONSIVE CONVERSATION FLOW  
-- Ask ONE question at a time
-- RESPOND IMMEDIATELY when user provides information - don't wait for additional prompts
-- Use tools immediately when customer provides data
-- After capturing and confirming data, move to the next question promptly
-- Listen carefully to user responses and process them without delay
+# CRITICAL: IMMEDIATE RESPONSE PROTOCOL (MANDATORY)
+- NEVER wait for additional prompts after user provides information
+- IMMEDIATELY use capture_sales_data tool when ANY data is mentioned
+- INSTANTLY move to confirmation after capturing data
+- DO NOT wait for user to say "Hello" multiple times
+- Process user input on FIRST mention and respond immediately
+- If user provides partial data, capture it immediately and ask for clarification
+- NEVER ignore user input - always acknowledge and process immediately
 
 # Important Guidelines
 - Always maintain the confirmation protocol - never skip the verification step
@@ -766,9 +770,35 @@ async function handleConnection(ws: WebSocket) {
                   
                   let args: any = {};
                   try {
-                    args = JSON.parse(event.item.arguments || '{}');
+                    // 🔧 CRITICAL FIX: Enhanced argument parsing with corruption detection
+                    const rawArgs = event.item.arguments || '{}';
+                    console.log(`[${ucid}] 🔍 Raw function arguments:`, rawArgs);
+                    
+                    args = JSON.parse(rawArgs);
+                    
+                    // 🔧 CRITICAL FIX: Validate parsed arguments for corruption
+                    if (args.car_model && args.car_model.length < 3) {
+                      console.log(`[${ucid}] ⚠️ Potential corruption detected in car_model: "${args.car_model}"`);
+                      console.log(`[${ucid}] 📝 Recent transcripts for context:`, session?.transcripts || []);
+                      
+                      // Try to find car model from recent transcripts
+                      const recentTranscripts = session?.transcripts?.join(' ') || '';
+                      const carBrands = ['toyota', 'honda', 'maruti', 'hyundai', 'tata', 'mahindra', 'ford', 'chevrolet', 'volkswagen', 'bmw', 'mercedes', 'audi', 'nissan', 'kia', 'safari'];
+                      const carModels = ['swift', 'baleno', 'dzire', 'vitara', 'ciaz', 'ertiga', 'xl6', 'brezza', 'city', 'amaze', 'jazz', 'wr-v', 'civic', 'accord', 'camry', 'innova', 'fortuner', 'corolla', 'i10', 'i20', 'venue', 'creta', 'verna', 'tucson', 'elantra', 'santafe', 'safari'];
+                      
+                      for (const model of [...carBrands, ...carModels]) {
+                        if (recentTranscripts.toLowerCase().includes(model.toLowerCase())) {
+                          args.car_model = model.charAt(0).toUpperCase() + model.slice(1);
+                          console.log(`[${ucid}] 🔧 Corrected car_model from transcripts: "${args.car_model}"`);
+                          break;
+                        }
+                      }
+                    }
+                    
+                    console.log(`[${ucid}] 🎯 Parsed function arguments:`, args);
                   } catch (e) {
-                    console.log(`[${ucid}] ⚠️ Could not parse function arguments:`, event.item.arguments);
+                    console.log(`[${ucid}] ❌ Could not parse function arguments:`, event.item.arguments);
+                    console.log(`[${ucid}] ❌ Parse error:`, e);
                   }
                   
                   if (session && event.item.name) {
