@@ -11,10 +11,24 @@ class QueueProcessor {
     this.isProcessing = false;
     this.pollInterval = 5000; // Check every 5 seconds
     
+    // 🔧 Ensure directories exist
+    this.ensureDirectories();
+    
     console.log('🔄 Queue Processor initialized');
     console.log('📁 Processing dir:', this.processingDir);
     console.log('📁 Transcripts dir:', this.transcriptsDir);
     console.log('📁 Results dir:', this.resultsDir);
+  }
+
+  // Ensure all required directories exist
+  ensureDirectories() {
+    const dirs = [this.processingDir, this.transcriptsDir, this.resultsDir];
+    dirs.forEach(dir => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`📁 Created directory: ${dir}`);
+      }
+    });
   }
 
   // Start watching for new queue entries
@@ -33,10 +47,23 @@ class QueueProcessor {
   // Process all pending queue entries
   async processQueue() {
     try {
+      // Ensure directories exist before processing
+      this.ensureDirectories();
+      
       // Get all pending queue files
-      const queueFiles = fs.readdirSync(this.processingDir)
-        .filter(file => file.endsWith('_queue.json'))
-        .sort(); // Process in order
+      let queueFiles;
+      try {
+        queueFiles = fs.readdirSync(this.processingDir)
+          .filter(file => file.endsWith('_queue.json'))
+          .sort(); // Process in order
+      } catch (readError) {
+        if (readError.code === 'ENOENT') {
+          console.log('📁 Processing directory not found, creating...');
+          this.ensureDirectories();
+          return; // Try again next cycle
+        }
+        throw readError;
+      }
 
       if (queueFiles.length === 0) {
         return; // No work to do
