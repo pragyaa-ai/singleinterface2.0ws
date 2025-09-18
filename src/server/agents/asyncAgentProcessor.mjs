@@ -120,32 +120,43 @@ Please extract all available sales data with confidence scores and provide notes
     console.log(`[${call_id}] ✅ Agent processing completed`);
     console.log(`[${call_id}] 📊 Raw result:`, JSON.stringify(result, null, 2));
     
-    // Extract the tool result
-    if (result && result.state && result.state.currentStep && result.state.currentStep.output) {
-      const extractedData = result.state.currentStep.output;
-      console.log(`[${call_id}] 🎯 Extracted data:`, extractedData);
-      
-      return {
-        success: true,
-        call_id,
-        extracted_data: extractedData.extracted_data || extractedData,
-        processing_metadata: {
-          processed_at: new Date().toISOString(),
-          processing_method: 'openai_agents_sdk_full_context',
-          conversation_entries: conversation?.length || 0,
-          conversation_length: conversationText.length,
-          agent_result: result
-        }
-      };
-    } else {
-      console.log(`[${call_id}] ⚠️ No extraction result found in agent response`);
-      return {
-        success: false,
-        call_id,
-        error: 'No extraction result found in agent response',
-        raw_result: result
-      };
+    // Extract the tool result from the generatedItems
+    const toolCallOutput = result?.state?.generatedItems?.find(item => 
+      item.type === 'tool_call_output_item' && 
+      item.rawItem?.name === 'extract_complete_sales_data'
+    );
+    
+    if (toolCallOutput && toolCallOutput.output) {
+      try {
+        const parsedOutput = JSON.parse(toolCallOutput.output);
+        const extractedData = parsedOutput.extracted_data;
+        console.log(`[${call_id}] 🎯 Extracted data:`, extractedData);
+        
+        return {
+          success: true,
+          call_id,
+          extracted_data: extractedData,
+          processing_metadata: {
+            processed_at: new Date().toISOString(),
+            processing_method: 'openai_agents_sdk_full_context',
+            conversation_entries: conversation?.length || 0,
+            conversation_length: conversationText.length,
+            tool_call_output: parsedOutput,
+            agent_result: result
+          }
+        };
+      } catch (parseError) {
+        console.log(`[${call_id}] ❌ Failed to parse tool output:`, parseError);
+      }
     }
+    
+    console.log(`[${call_id}] ⚠️ No extraction result found in agent response`);
+    return {
+      success: false,
+      call_id,
+      error: 'No extraction result found in agent response',
+      raw_result: result
+    };
     
   } catch (error) {
     console.error('❌ Agent processing failed:', error);
