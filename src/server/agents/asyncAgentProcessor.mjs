@@ -120,8 +120,8 @@ Please extract all available sales data with confidence scores and provide notes
     console.log(`[${call_id}] ✅ Agent processing completed`);
     console.log(`[${call_id}] 📊 Raw result:`, JSON.stringify(result, null, 2));
     
-    // Extract the tool result from the generatedItems - find any tool_call_output_item
-    const toolCallOutput = result?.state?.generatedItems?.find(item => 
+    // Extract the tool result from the generatedItems - find any tool_call_output_item  
+    const toolCallOutput = result?.state?._generatedItems?.find(item => 
       item.type === 'tool_call_output_item'
     );
     
@@ -143,7 +143,8 @@ Please extract all available sales data with confidence scores and provide notes
     if (outputText) {
       try {
         console.log(`[${call_id}] 📝 Output text:`, outputText);
-        const parsedOutput = JSON.parse(outputText);
+        // Check if outputText is already an object or needs parsing
+        const parsedOutput = typeof outputText === 'string' ? JSON.parse(outputText) : outputText;
         const extractedData = parsedOutput.extracted_data;
         console.log(`[${call_id}] 🎯 Extracted data:`, extractedData);
         
