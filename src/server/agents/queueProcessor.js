@@ -69,7 +69,8 @@ class QueueProcessor {
         return; // No work to do
       }
 
-      console.log(`📋 Found ${queueFiles.length} queue entries to process`);
+      // Note: Will filter for pending entries in processQueueEntry()
+      console.log(`📋 Found ${queueFiles.length} queue entries to check`);
       this.isProcessing = true;
 
       for (const queueFile of queueFiles) {
