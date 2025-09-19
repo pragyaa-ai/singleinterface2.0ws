@@ -123,7 +123,7 @@ Please extract all available sales data with confidence scores and provide notes
     // Extract the tool result from the generatedItems
     const toolCallOutput = result?.state?.generatedItems?.find(item => 
       item.type === 'tool_call_output_item' && 
-      item.rawItem?.name === 'extract_complete_sales_data'
+      item.rawItem?.type === 'function_call_result'
     );
     
     console.log(`[${call_id}] 🔍 Debug toolCallOutput:`, JSON.stringify(toolCallOutput, null, 2));
