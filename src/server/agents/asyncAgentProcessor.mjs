@@ -133,6 +133,10 @@ Please extract all available sales data with confidence scores and provide notes
       outputText = toolCallOutput.rawItem.output.text;
     } else if (toolCallOutput?.output) {
       outputText = toolCallOutput.output;
+    } else if (toolCallOutput?.rawItem?.output) {
+      // NEW: Try direct rawItem.output path
+      outputText = toolCallOutput.rawItem.output;
+    }
     }
     
     if (outputText) {

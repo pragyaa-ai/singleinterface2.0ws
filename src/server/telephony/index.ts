@@ -963,51 +963,31 @@ async function handleConnection(ws: WebSocket) {
               }
               
               // 🔍 ENHANCED: Log response events and capture in rich transcript
-              if (event.type === 'response.text.done') {
-                console.log(`[${ucid}] 🤖 Assistant response:`, event.text);
-                
-                // 🔄 NEW: Add assistant response to rich transcript
-                if (session && event.text) {
-                  const assistantEntry: TranscriptEntry = {
-                    timestamp: new Date().toISOString(),
-                    speaker: 'assistant',
-                    text: event.text,
-                    event_type: 'response_text_done'
-                  };
-                  session.fullTranscript.push(assistantEntry);
-                  console.log(`[${ucid}] 📋 Assistant response added to rich transcript`);
-                }
-              }
-              
-              // 🎯 NEW: Capture assistant audio content
               if (event.type === 'response.audio_transcript.done') {
                 console.log(`[${ucid}] 🔊 Assistant audio transcript:`, event.transcript);
                 
+                // 🔄 NEW: Add assistant response to rich transcript (PRIMARY SOURCE)
                 if (session && event.transcript) {
-                  const assistantEntry: TranscriptEntry = {
-                    timestamp: new Date().toISOString(),
-                    speaker: 'assistant',
-                    text: event.transcript,
-                    event_type: 'response_audio_transcript_done'
-                  };
-                  session.fullTranscript.push(assistantEntry);
-                  console.log(`[${ucid}] 📋 Assistant audio transcript added to rich transcript`);
-                }
-              }
-              
-              // 🎯 NEW: Capture assistant content deltas (real-time)
-              if (event.type === 'response.content_part.done') {
-                console.log(`[${ucid}] 📝 Assistant content part:`, event.part);
-                
-                if (session && event.part?.transcript) {
-                  const assistantEntry: TranscriptEntry = {
-                    timestamp: new Date().toISOString(),
-                    speaker: 'assistant',
-                    text: event.part.transcript,
-                    event_type: 'response_content_part_done'
-                  };
-                  session.fullTranscript.push(assistantEntry);
-                  console.log(`[${ucid}] 📋 Assistant content part added to rich transcript`);
+                  // 🚫 DEDUPLICATE: Check if this exact text was already added recently
+                  const recentTranscripts = session.fullTranscript.slice(-3);
+                  const isDuplicate = recentTranscripts.some(entry => 
+                    entry.speaker === 'assistant' && 
+                    entry.text === event.transcript &&
+                    Date.now() - new Date(entry.timestamp).getTime() < 5000 // Within 5 seconds
+                  );
+                  
+                  if (!isDuplicate) {
+                    const assistantEntry: TranscriptEntry = {
+                      timestamp: new Date().toISOString(),
+                      speaker: 'assistant',
+                      text: event.transcript,
+                      event_type: 'response_audio_transcript_done'
+                    };
+                    session.fullTranscript.push(assistantEntry);
+                    console.log(`[${ucid}] 📋 Assistant response added to rich transcript`);
+                  } else {
+                    console.log(`[${ucid}] 🚫 Skipped duplicate assistant response`);
+                  }
                 }
               }
               
