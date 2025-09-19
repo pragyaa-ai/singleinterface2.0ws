@@ -120,19 +120,23 @@ Please extract all available sales data with confidence scores and provide notes
     console.log(`[${call_id}] ✅ Agent processing completed`);
     console.log(`[${call_id}] 📊 Raw result:`, JSON.stringify(result, null, 2));
     
-    // Extract the tool result from the generatedItems
+    // Extract the tool result from the generatedItems - find any tool_call_output_item
     const toolCallOutput = result?.state?.generatedItems?.find(item => 
-      item.type === 'tool_call_output_item' && 
-      item.rawItem?.type === 'function_call_result' &&
-      item.rawItem?.name === 'extract_complete_sales_data'
+      item.type === 'tool_call_output_item'
     );
     
     console.log(`[${call_id}] 🔍 Debug toolCallOutput:`, JSON.stringify(toolCallOutput, null, 2));
     
-    if (toolCallOutput && toolCallOutput.rawItem?.output?.text) {
+    // Try multiple possible paths for the JSON data
+    let outputText = null;
+    if (toolCallOutput?.rawItem?.output?.text) {
+      outputText = toolCallOutput.rawItem.output.text;
+    } else if (toolCallOutput?.output) {
+      outputText = toolCallOutput.output;
+    }
+    
+    if (outputText) {
       try {
-        // The output is in toolCallOutput.rawItem.output.text as a JSON string
-        const outputText = toolCallOutput.rawItem.output.text;
         console.log(`[${call_id}] 📝 Output text:`, outputText);
         const parsedOutput = JSON.parse(outputText);
         const extractedData = parsedOutput.extracted_data;
