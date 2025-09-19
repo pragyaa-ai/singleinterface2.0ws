@@ -1,0 +1,12 @@
+{
+  "call_id": "test123",
+  "conversation": [
+    {"timestamp": "2025-09-19T07:10:59.621Z", "speaker": "user", "text": "Hello"},
+    {"timestamp": "2025-09-19T07:11:01.235Z", "speaker": "assistant", "text": "Hello! This call is from Single Interface. Could you please tell me your full name?"},
+    {"timestamp": "2025-09-19T07:11:14.280Z", "speaker": "user", "text": "Gulshan Mehta"},
+    {"timestamp": "2025-09-19T07:11:30.000Z", "speaker": "assistant", "text": "Thank you! Which car model are you interested in?"},
+    {"timestamp": "2025-09-19T07:11:45.000Z", "speaker": "user", "text": "Safari"},
+    {"timestamp": "2025-09-19T07:12:00.000Z", "speaker": "assistant", "text": "Great! Could you please share your email ID?"},
+    {"timestamp": "2025-09-19T07:12:15.000Z", "speaker": "user", "text": "gulshan.mehta@gmail.com"}
+  ]
+}

@@ -129,14 +129,15 @@ Please extract all available sales data with confidence scores and provide notes
     
     // Try multiple possible paths for the JSON data
     let outputText = null;
-    if (toolCallOutput?.rawItem?.output?.text) {
-      outputText = toolCallOutput.rawItem.output.text;
-    } else if (toolCallOutput?.output) {
+    if (toolCallOutput?.output) {
+      // FIRST: Try direct output field (most reliable)
       outputText = toolCallOutput.output;
+    } else if (toolCallOutput?.rawItem?.output?.text) {
+      // SECOND: Try rawItem.output.text path
+      outputText = toolCallOutput.rawItem.output.text;
     } else if (toolCallOutput?.rawItem?.output) {
-      // NEW: Try direct rawItem.output path
+      // THIRD: Try direct rawItem.output path
       outputText = toolCallOutput.rawItem.output;
-    }
     }
     
     if (outputText) {

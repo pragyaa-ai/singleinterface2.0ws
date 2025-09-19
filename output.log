@@ -1,0 +1,432 @@
+🤖 Processing transcript file: test_transcript.json
+[test123] 📚 Processing 7 conversation entries
+[test123] 📝 Conversation context prepared (475 chars)
+[test123] 🚀 Running OpenAI Agent analysis...
+[test123] ✅ Agent processing completed
+[test123] 📊 Raw result: {
+  "state": {
+    "$schemaVersion": "1.0",
+    "currentTurn": 2,
+    "currentAgent": {
+      "name": "FullContextTranscriptProcessor"
+    },
+    "originalInput": "Analyze this complete sales call conversation and extract all relevant customer information:\n\nCONVERSATION TRANSCRIPT:\n[2025-09-19T07:10:59.621Z] USER: Hello\n[2025-09-19T07:11:01.235Z] ASSISTANT: Hello! This call is from Single Interface. Could you please tell me your full name?\n[2025-09-19T07:11:14.280Z] USER: Gulshan Mehta\n[2025-09-19T07:11:30.000Z] ASSISTANT: Thank you! Which car model are you interested in?\n[2025-09-19T07:11:45.000Z] USER: Safari\n[2025-09-19T07:12:00.000Z] ASSISTANT: Great! Could you please share your email ID?\n[2025-09-19T07:12:15.000Z] USER: gulshan.mehta@gmail.com\n\nPlease extract all available sales data with confidence scores and provide notes about the conversation quality.",
+    "modelResponses": [
+      {
+        "usage": {
+          "requests": 1,
+          "inputTokens": 1017,
+          "outputTokens": 110,
+          "totalTokens": 1127
+        },
+        "output": [
+          {
+            "providerData": {
+              "type": "function_call"
+            },
+            "id": "fc_68cd06781310819688a1c630e295646b009ed52520a40af9",
+            "type": "function_call",
+            "callId": "call_NR61ZeSr1G75zaCKYNyYluAg",
+            "name": "extract_complete_sales_data",
+            "status": "completed",
+            "arguments": "{\"full_name\":\"Gulshan Mehta\",\"car_model\":\"Safari\",\"email_id\":\"gulshan.mehta@gmail.com\",\"phone_number\":\"\" ,\"location\":\"\",\"confidence_scores\":{\"name_confidence\":1.0,\"car_confidence\":1.0,\"email_confidence\":1.0},\"extraction_notes\":\"All information was provided clearly and directly; user answered each question promptly. No corrections or ambiguities. Data is exact and clear from a complete conversation.\",\"conversation_quality\":\"excellent\"}"
+          }
+        ],
+        "responseId": "resp_68cd067659508196884358f3b5f1fd48009ed52520a40af9"
+      },
+      {
+        "usage": {
+          "requests": 1,
+          "inputTokens": 1261,
+          "outputTokens": 150,
+          "totalTokens": 1411
+        },
+        "output": [
+          {
+            "providerData": {},
+            "id": "msg_68cd067ac06c8196a9996c81c6962156009ed52520a40af9",
+            "type": "message",
+            "role": "assistant",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "text": "Here is the extracted sales lead information from the complete conversation:\n\n- Full Name: Gulshan Mehta\n  - Confidence: 1.0 (clear, direct response to the name request)\n- Car Model Interested In: Safari\n  - Confidence: 1.0 (direct and specific answer)\n- Email ID: gulshan.mehta@gmail.com\n  - Confidence: 1.0 (exact email provided without ambiguity)\n- Phone Number: Not provided\n- Location: Not provided\n\nExtraction Notes:\n- All information was provided clearly and directly.\n- The user answered each question promptly—there were no corrections, uncertainties, or ambiguities.\n- Data is exact and easily matched to the assistant’s requests.\n\nConversation Quality: excellent"
+              }
+            ]
+          }
+        ],
+        "responseId": "resp_68cd067a36e48196881538a4cc351263009ed52520a40af9"
+      }
+    ],
+    "context": {
+      "usage": {
+        "requests": 2,
+        "inputTokens": 2278,
+        "outputTokens": 260,
+        "totalTokens": 2538
+      },
+      "approvals": {},
+      "context": {}
+    },
+    "toolUseTracker": {
+      "FullContextTranscriptProcessor": []
+    },
+    "maxTurns": 10,
+    "currentAgentSpan": {
+      "object": "trace.span",
+      "id": "span_89e182b637ca49b1b7bb2244",
+      "trace_id": "trace_f1b6e6f9ed4449a193479180fc51c94c",
+      "parent_id": null,
+      "started_at": "2025-09-19T07:29:57.500Z",
+      "ended_at": "2025-09-19T07:30:04.912Z",
+      "error": null,
+      "span_data": {
+        "type": "agent",
+        "name": "FullContextTranscriptProcessor",
+        "handoffs": [],
+        "output_type": "text",
+        "tools": [
+          "extract_complete_sales_data"
+        ]
+      }
+    },
+    "noActiveAgentRun": false,
+    "inputGuardrailResults": [],
+    "outputGuardrailResults": [],
+    "currentStep": {
+      "type": "next_step_final_output",
+      "output": "Here is the extracted sales lead information from the complete conversation:\n\n- Full Name: Gulshan Mehta\n  - Confidence: 1.0 (clear, direct response to the name request)\n- Car Model Interested In: Safari\n  - Confidence: 1.0 (direct and specific answer)\n- Email ID: gulshan.mehta@gmail.com\n  - Confidence: 1.0 (exact email provided without ambiguity)\n- Phone Number: Not provided\n- Location: Not provided\n\nExtraction Notes:\n- All information was provided clearly and directly.\n- The user answered each question promptly—there were no corrections, uncertainties, or ambiguities.\n- Data is exact and easily matched to the assistant’s requests.\n\nConversation Quality: excellent"
+    },
+    "lastModelResponse": {
+      "usage": {
+        "requests": 1,
+        "inputTokens": 1261,
+        "outputTokens": 150,
+        "totalTokens": 1411
+      },
+      "output": [
+        {
+          "providerData": {},
+          "id": "msg_68cd067ac06c8196a9996c81c6962156009ed52520a40af9",
+          "type": "message",
+          "role": "assistant",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "text": "Here is the extracted sales lead information from the complete conversation:\n\n- Full Name: Gulshan Mehta\n  - Confidence: 1.0 (clear, direct response to the name request)\n- Car Model Interested In: Safari\n  - Confidence: 1.0 (direct and specific answer)\n- Email ID: gulshan.mehta@gmail.com\n  - Confidence: 1.0 (exact email provided without ambiguity)\n- Phone Number: Not provided\n- Location: Not provided\n\nExtraction Notes:\n- All information was provided clearly and directly.\n- The user answered each question promptly—there were no corrections, uncertainties, or ambiguities.\n- Data is exact and easily matched to the assistant’s requests.\n\nConversation Quality: excellent"
+            }
+          ]
+        }
+      ],
+      "responseId": "resp_68cd067a36e48196881538a4cc351263009ed52520a40af9"
+    },
+    "generatedItems": [
+      {
+        "type": "tool_call_item",
+        "rawItem": {
+          "providerData": {
+            "type": "function_call"
+          },
+          "id": "fc_68cd06781310819688a1c630e295646b009ed52520a40af9",
+          "type": "function_call",
+          "callId": "call_NR61ZeSr1G75zaCKYNyYluAg",
+          "name": "extract_complete_sales_data",
+          "status": "completed",
+          "arguments": "{\"full_name\":\"Gulshan Mehta\",\"car_model\":\"Safari\",\"email_id\":\"gulshan.mehta@gmail.com\",\"phone_number\":\"\" ,\"location\":\"\",\"confidence_scores\":{\"name_confidence\":1.0,\"car_confidence\":1.0,\"email_confidence\":1.0},\"extraction_notes\":\"All information was provided clearly and directly; user answered each question promptly. No corrections or ambiguities. Data is exact and clear from a complete conversation.\",\"conversation_quality\":\"excellent\"}"
+        },
+        "agent": {
+          "name": "FullContextTranscriptProcessor"
+        }
+      },
+      {
+        "type": "tool_call_output_item",
+        "rawItem": {
+          "type": "function_call_result",
+          "name": "extract_complete_sales_data",
+          "callId": "call_NR61ZeSr1G75zaCKYNyYluAg",
+          "status": "completed",
+          "output": {
+            "type": "text",
+            "text": "{\"success\":true,\"extracted_data\":{\"full_name\":\"Gulshan Mehta\",\"car_model\":\"Safari\",\"email_id\":\"gulshan.mehta@gmail.com\",\"phone_number\":\"\",\"location\":\"\",\"confidence_scores\":{\"name_confidence\":1,\"car_confidence\":1,\"email_confidence\":1},\"extraction_notes\":\"All information was provided clearly and directly; user answered each question promptly. No corrections or ambiguities. Data is exact and clear from a complete conversation.\",\"conversation_quality\":\"excellent\"},\"processed_at\":\"2025-09-19T07:30:01.493Z\",\"processing_method\":\"openai_agents_sdk\"}"
+          }
+        },
+        "agent": {
+          "name": "FullContextTranscriptProcessor"
+        },
+        "output": "{\"success\":true,\"extracted_data\":{\"full_name\":\"Gulshan Mehta\",\"car_model\":\"Safari\",\"email_id\":\"gulshan.mehta@gmail.com\",\"phone_number\":\"\",\"location\":\"\",\"confidence_scores\":{\"name_confidence\":1,\"car_confidence\":1,\"email_confidence\":1},\"extraction_notes\":\"All information was provided clearly and directly; user answered each question promptly. No corrections or ambiguities. Data is exact and clear from a complete conversation.\",\"conversation_quality\":\"excellent\"},\"processed_at\":\"2025-09-19T07:30:01.493Z\",\"processing_method\":\"openai_agents_sdk\"}"
+      },
+      {
+        "type": "message_output_item",
+        "rawItem": {
+          "providerData": {},
+          "id": "msg_68cd067ac06c8196a9996c81c6962156009ed52520a40af9",
+          "type": "message",
+          "role": "assistant",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "text": "Here is the extracted sales lead information from the complete conversation:\n\n- Full Name: Gulshan Mehta\n  - Confidence: 1.0 (clear, direct response to the name request)\n- Car Model Interested In: Safari\n  - Confidence: 1.0 (direct and specific answer)\n- Email ID: gulshan.mehta@gmail.com\n  - Confidence: 1.0 (exact email provided without ambiguity)\n- Phone Number: Not provided\n- Location: Not provided\n\nExtraction Notes:\n- All information was provided clearly and directly.\n- The user answered each question promptly—there were no corrections, uncertainties, or ambiguities.\n- Data is exact and easily matched to the assistant’s requests.\n\nConversation Quality: excellent"
+            }
+          ]
+        },
+        "agent": {
+          "name": "FullContextTranscriptProcessor"
+        }
+      }
+    ],
+    "lastProcessedResponse": {
+      "newItems": [
+        {
+          "type": "message_output_item",
+          "rawItem": {
+            "providerData": {},
+            "id": "msg_68cd067ac06c8196a9996c81c6962156009ed52520a40af9",
+            "type": "message",
+            "role": "assistant",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "text": "Here is the extracted sales lead information from the complete conversation:\n\n- Full Name: Gulshan Mehta\n  - Confidence: 1.0 (clear, direct response to the name request)\n- Car Model Interested In: Safari\n  - Confidence: 1.0 (direct and specific answer)\n- Email ID: gulshan.mehta@gmail.com\n  - Confidence: 1.0 (exact email provided without ambiguity)\n- Phone Number: Not provided\n- Location: Not provided\n\nExtraction Notes:\n- All information was provided clearly and directly.\n- The user answered each question promptly—there were no corrections, uncertainties, or ambiguities.\n- Data is exact and easily matched to the assistant’s requests.\n\nConversation Quality: excellent"
+              }
+            ]
+          },
+          "agent": {
+            "name": "FullContextTranscriptProcessor"
+          }
+        }
+      ],
+      "toolsUsed": [],
+      "handoffs": [],
+      "functions": [],
+      "computerActions": []
+    },
+    "trace": {
+      "object": "trace",
+      "id": "trace_f1b6e6f9ed4449a193479180fc51c94c",
+      "workflow_name": "Agent workflow",
+      "group_id": null,
+      "metadata": {}
+    }
+  }
+}
+[test123] 🔍 Debug toolCallOutput: undefined
+[test123] ⚠️ No extraction result found in agent response
+{
+  "success": false,
+  "call_id": "test123",
+  "error": "No extraction result found in agent response",
+  "raw_result": {
+    "state": {
+      "$schemaVersion": "1.0",
+      "currentTurn": 2,
+      "currentAgent": {
+        "name": "FullContextTranscriptProcessor"
+      },
+      "originalInput": "Analyze this complete sales call conversation and extract all relevant customer information:\n\nCONVERSATION TRANSCRIPT:\n[2025-09-19T07:10:59.621Z] USER: Hello\n[2025-09-19T07:11:01.235Z] ASSISTANT: Hello! This call is from Single Interface. Could you please tell me your full name?\n[2025-09-19T07:11:14.280Z] USER: Gulshan Mehta\n[2025-09-19T07:11:30.000Z] ASSISTANT: Thank you! Which car model are you interested in?\n[2025-09-19T07:11:45.000Z] USER: Safari\n[2025-09-19T07:12:00.000Z] ASSISTANT: Great! Could you please share your email ID?\n[2025-09-19T07:12:15.000Z] USER: gulshan.mehta@gmail.com\n\nPlease extract all available sales data with confidence scores and provide notes about the conversation quality.",
+      "modelResponses": [
+        {
+          "usage": {
+            "requests": 1,
+            "inputTokens": 1017,
+            "outputTokens": 110,
+            "totalTokens": 1127
+          },
+          "output": [
+            {
+              "providerData": {
+                "type": "function_call"
+              },
+              "id": "fc_68cd06781310819688a1c630e295646b009ed52520a40af9",
+              "type": "function_call",
+              "callId": "call_NR61ZeSr1G75zaCKYNyYluAg",
+              "name": "extract_complete_sales_data",
+              "status": "completed",
+              "arguments": "{\"full_name\":\"Gulshan Mehta\",\"car_model\":\"Safari\",\"email_id\":\"gulshan.mehta@gmail.com\",\"phone_number\":\"\" ,\"location\":\"\",\"confidence_scores\":{\"name_confidence\":1.0,\"car_confidence\":1.0,\"email_confidence\":1.0},\"extraction_notes\":\"All information was provided clearly and directly; user answered each question promptly. No corrections or ambiguities. Data is exact and clear from a complete conversation.\",\"conversation_quality\":\"excellent\"}"
+            }
+          ],
+          "responseId": "resp_68cd067659508196884358f3b5f1fd48009ed52520a40af9"
+        },
+        {
+          "usage": {
+            "requests": 1,
+            "inputTokens": 1261,
+            "outputTokens": 150,
+            "totalTokens": 1411
+          },
+          "output": [
+            {
+              "providerData": {},
+              "id": "msg_68cd067ac06c8196a9996c81c6962156009ed52520a40af9",
+              "type": "message",
+              "role": "assistant",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "output_text",
+                  "text": "Here is the extracted sales lead information from the complete conversation:\n\n- Full Name: Gulshan Mehta\n  - Confidence: 1.0 (clear, direct response to the name request)\n- Car Model Interested In: Safari\n  - Confidence: 1.0 (direct and specific answer)\n- Email ID: gulshan.mehta@gmail.com\n  - Confidence: 1.0 (exact email provided without ambiguity)\n- Phone Number: Not provided\n- Location: Not provided\n\nExtraction Notes:\n- All information was provided clearly and directly.\n- The user answered each question promptly—there were no corrections, uncertainties, or ambiguities.\n- Data is exact and easily matched to the assistant’s requests.\n\nConversation Quality: excellent"
+                }
+              ]
+            }
+          ],
+          "responseId": "resp_68cd067a36e48196881538a4cc351263009ed52520a40af9"
+        }
+      ],
+      "context": {
+        "usage": {
+          "requests": 2,
+          "inputTokens": 2278,
+          "outputTokens": 260,
+          "totalTokens": 2538
+        },
+        "approvals": {},
+        "context": {}
+      },
+      "toolUseTracker": {
+        "FullContextTranscriptProcessor": []
+      },
+      "maxTurns": 10,
+      "currentAgentSpan": {
+        "object": "trace.span",
+        "id": "span_89e182b637ca49b1b7bb2244",
+        "trace_id": "trace_f1b6e6f9ed4449a193479180fc51c94c",
+        "parent_id": null,
+        "started_at": "2025-09-19T07:29:57.500Z",
+        "ended_at": "2025-09-19T07:30:04.912Z",
+        "error": null,
+        "span_data": {
+          "type": "agent",
+          "name": "FullContextTranscriptProcessor",
+          "handoffs": [],
+          "output_type": "text",
+          "tools": [
+            "extract_complete_sales_data"
+          ]
+        }
+      },
+      "noActiveAgentRun": false,
+      "inputGuardrailResults": [],
+      "outputGuardrailResults": [],
+      "currentStep": {
+        "type": "next_step_final_output",
+        "output": "Here is the extracted sales lead information from the complete conversation:\n\n- Full Name: Gulshan Mehta\n  - Confidence: 1.0 (clear, direct response to the name request)\n- Car Model Interested In: Safari\n  - Confidence: 1.0 (direct and specific answer)\n- Email ID: gulshan.mehta@gmail.com\n  - Confidence: 1.0 (exact email provided without ambiguity)\n- Phone Number: Not provided\n- Location: Not provided\n\nExtraction Notes:\n- All information was provided clearly and directly.\n- The user answered each question promptly—there were no corrections, uncertainties, or ambiguities.\n- Data is exact and easily matched to the assistant’s requests.\n\nConversation Quality: excellent"
+      },
+      "lastModelResponse": {
+        "usage": {
+          "requests": 1,
+          "inputTokens": 1261,
+          "outputTokens": 150,
+          "totalTokens": 1411
+        },
+        "output": [
+          {
+            "providerData": {},
+            "id": "msg_68cd067ac06c8196a9996c81c6962156009ed52520a40af9",
+            "type": "message",
+            "role": "assistant",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "text": "Here is the extracted sales lead information from the complete conversation:\n\n- Full Name: Gulshan Mehta\n  - Confidence: 1.0 (clear, direct response to the name request)\n- Car Model Interested In: Safari\n  - Confidence: 1.0 (direct and specific answer)\n- Email ID: gulshan.mehta@gmail.com\n  - Confidence: 1.0 (exact email provided without ambiguity)\n- Phone Number: Not provided\n- Location: Not provided\n\nExtraction Notes:\n- All information was provided clearly and directly.\n- The user answered each question promptly—there were no corrections, uncertainties, or ambiguities.\n- Data is exact and easily matched to the assistant’s requests.\n\nConversation Quality: excellent"
+              }
+            ]
+          }
+        ],
+        "responseId": "resp_68cd067a36e48196881538a4cc351263009ed52520a40af9"
+      },
+      "generatedItems": [
+        {
+          "type": "tool_call_item",
+          "rawItem": {
+            "providerData": {
+              "type": "function_call"
+            },
+            "id": "fc_68cd06781310819688a1c630e295646b009ed52520a40af9",
+            "type": "function_call",
+            "callId": "call_NR61ZeSr1G75zaCKYNyYluAg",
+            "name": "extract_complete_sales_data",
+            "status": "completed",
+            "arguments": "{\"full_name\":\"Gulshan Mehta\",\"car_model\":\"Safari\",\"email_id\":\"gulshan.mehta@gmail.com\",\"phone_number\":\"\" ,\"location\":\"\",\"confidence_scores\":{\"name_confidence\":1.0,\"car_confidence\":1.0,\"email_confidence\":1.0},\"extraction_notes\":\"All information was provided clearly and directly; user answered each question promptly. No corrections or ambiguities. Data is exact and clear from a complete conversation.\",\"conversation_quality\":\"excellent\"}"
+          },
+          "agent": {
+            "name": "FullContextTranscriptProcessor"
+          }
+        },
+        {
+          "type": "tool_call_output_item",
+          "rawItem": {
+            "type": "function_call_result",
+            "name": "extract_complete_sales_data",
+            "callId": "call_NR61ZeSr1G75zaCKYNyYluAg",
+            "status": "completed",
+            "output": {
+              "type": "text",
+              "text": "{\"success\":true,\"extracted_data\":{\"full_name\":\"Gulshan Mehta\",\"car_model\":\"Safari\",\"email_id\":\"gulshan.mehta@gmail.com\",\"phone_number\":\"\",\"location\":\"\",\"confidence_scores\":{\"name_confidence\":1,\"car_confidence\":1,\"email_confidence\":1},\"extraction_notes\":\"All information was provided clearly and directly; user answered each question promptly. No corrections or ambiguities. Data is exact and clear from a complete conversation.\",\"conversation_quality\":\"excellent\"},\"processed_at\":\"2025-09-19T07:30:01.493Z\",\"processing_method\":\"openai_agents_sdk\"}"
+            }
+          },
+          "agent": {
+            "name": "FullContextTranscriptProcessor"
+          },
+          "output": "{\"success\":true,\"extracted_data\":{\"full_name\":\"Gulshan Mehta\",\"car_model\":\"Safari\",\"email_id\":\"gulshan.mehta@gmail.com\",\"phone_number\":\"\",\"location\":\"\",\"confidence_scores\":{\"name_confidence\":1,\"car_confidence\":1,\"email_confidence\":1},\"extraction_notes\":\"All information was provided clearly and directly; user answered each question promptly. No corrections or ambiguities. Data is exact and clear from a complete conversation.\",\"conversation_quality\":\"excellent\"},\"processed_at\":\"2025-09-19T07:30:01.493Z\",\"processing_method\":\"openai_agents_sdk\"}"
+        },
+        {
+          "type": "message_output_item",
+          "rawItem": {
+            "providerData": {},
+            "id": "msg_68cd067ac06c8196a9996c81c6962156009ed52520a40af9",
+            "type": "message",
+            "role": "assistant",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "text": "Here is the extracted sales lead information from the complete conversation:\n\n- Full Name: Gulshan Mehta\n  - Confidence: 1.0 (clear, direct response to the name request)\n- Car Model Interested In: Safari\n  - Confidence: 1.0 (direct and specific answer)\n- Email ID: gulshan.mehta@gmail.com\n  - Confidence: 1.0 (exact email provided without ambiguity)\n- Phone Number: Not provided\n- Location: Not provided\n\nExtraction Notes:\n- All information was provided clearly and directly.\n- The user answered each question promptly—there were no corrections, uncertainties, or ambiguities.\n- Data is exact and easily matched to the assistant’s requests.\n\nConversation Quality: excellent"
+              }
+            ]
+          },
+          "agent": {
+            "name": "FullContextTranscriptProcessor"
+          }
+        }
+      ],
+      "lastProcessedResponse": {
+        "newItems": [
+          {
+            "type": "message_output_item",
+            "rawItem": {
+              "providerData": {},
+              "id": "msg_68cd067ac06c8196a9996c81c6962156009ed52520a40af9",
+              "type": "message",
+              "role": "assistant",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "output_text",
+                  "text": "Here is the extracted sales lead information from the complete conversation:\n\n- Full Name: Gulshan Mehta\n  - Confidence: 1.0 (clear, direct response to the name request)\n- Car Model Interested In: Safari\n  - Confidence: 1.0 (direct and specific answer)\n- Email ID: gulshan.mehta@gmail.com\n  - Confidence: 1.0 (exact email provided without ambiguity)\n- Phone Number: Not provided\n- Location: Not provided\n\nExtraction Notes:\n- All information was provided clearly and directly.\n- The user answered each question promptly—there were no corrections, uncertainties, or ambiguities.\n- Data is exact and easily matched to the assistant’s requests.\n\nConversation Quality: excellent"
+                }
+              ]
+            },
+            "agent": {
+              "name": "FullContextTranscriptProcessor"
+            }
+          }
+        ],
+        "toolsUsed": [],
+        "handoffs": [],
+        "functions": [],
+        "computerActions": []
+      },
+      "trace": {
+        "object": "trace",
+        "id": "trace_f1b6e6f9ed4449a193479180fc51c94c",
+        "workflow_name": "Agent workflow",
+        "group_id": null,
+        "metadata": {}
+      }
+    }
+  }
+}
