@@ -126,10 +126,13 @@ Please extract all available sales data with confidence scores and provide notes
       item.rawItem?.name === 'extract_complete_sales_data'
     );
     
+    console.log(`[${call_id}] 🔍 Debug toolCallOutput:`, JSON.stringify(toolCallOutput, null, 2));
+    
     if (toolCallOutput && toolCallOutput.rawItem?.output?.text) {
       try {
         // The output is in toolCallOutput.rawItem.output.text as a JSON string
         const outputText = toolCallOutput.rawItem.output.text;
+        console.log(`[${call_id}] 📝 Output text:`, outputText);
         const parsedOutput = JSON.parse(outputText);
         const extractedData = parsedOutput.extracted_data;
         console.log(`[${call_id}] 🎯 Extracted data:`, extractedData);
