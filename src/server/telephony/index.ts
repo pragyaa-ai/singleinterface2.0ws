@@ -979,6 +979,38 @@ async function handleConnection(ws: WebSocket) {
                 }
               }
               
+              // 🎯 NEW: Capture assistant audio content
+              if (event.type === 'response.audio_transcript.done') {
+                console.log(`[${ucid}] 🔊 Assistant audio transcript:`, event.transcript);
+                
+                if (session && event.transcript) {
+                  const assistantEntry: TranscriptEntry = {
+                    timestamp: new Date().toISOString(),
+                    speaker: 'assistant',
+                    text: event.transcript,
+                    event_type: 'response_audio_transcript_done'
+                  };
+                  session.fullTranscript.push(assistantEntry);
+                  console.log(`[${ucid}] 📋 Assistant audio transcript added to rich transcript`);
+                }
+              }
+              
+              // 🎯 NEW: Capture assistant content deltas (real-time)
+              if (event.type === 'response.content_part.done') {
+                console.log(`[${ucid}] 📝 Assistant content part:`, event.part);
+                
+                if (session && event.part?.transcript) {
+                  const assistantEntry: TranscriptEntry = {
+                    timestamp: new Date().toISOString(),
+                    speaker: 'assistant',
+                    text: event.part.transcript,
+                    event_type: 'response_content_part_done'
+                  };
+                  session.fullTranscript.push(assistantEntry);
+                  console.log(`[${ucid}] 📋 Assistant content part added to rich transcript`);
+                }
+              }
+              
               if (event.type === 'response.text.delta') {
                 console.log(`[${ucid}] 🤖 Assistant text delta:`, event.delta);
               }
