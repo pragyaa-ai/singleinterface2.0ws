@@ -81,13 +81,13 @@ Use the extract_complete_sales_data tool with your findings.`,
 // Main processing function
 async function processTranscriptFile(transcriptFilePath) {
   try {
-    console.log('🤖 Processing transcript file:', transcriptFilePath);
+    console.error('🤖 Processing transcript file:', transcriptFilePath);
     
     // Read transcript file
     const transcriptData = JSON.parse(fs.readFileSync(transcriptFilePath, 'utf8'));
     const { call_id, conversation, simple_transcripts } = transcriptData;
     
-    console.log(`[${call_id}] 📚 Processing ${conversation?.length || 0} conversation entries`);
+    console.error(`[${call_id}] 📚 Processing ${conversation?.length || 0} conversation entries`);
     
     // Prepare conversation context for the agent
     let conversationText = '';
@@ -104,7 +104,7 @@ async function processTranscriptFile(transcriptFilePath) {
       throw new Error('No conversation data found in transcript file');
     }
     
-    console.log(`[${call_id}] 📝 Conversation context prepared (${conversationText.length} chars)`);
+    console.error(`[${call_id}] 📝 Conversation context prepared (${conversationText.length} chars)`);
     
     // Process with OpenAI Agent
     const agentPrompt = `Analyze this complete sales call conversation and extract all relevant customer information:
@@ -114,18 +114,18 @@ ${conversationText}
 
 Please extract all available sales data with confidence scores and provide notes about the conversation quality.`;
 
-    console.log(`[${call_id}] 🚀 Running OpenAI Agent analysis...`);
+    console.error(`[${call_id}] 🚀 Running OpenAI Agent analysis...`);
     const result = await run(fullContextAgent, agentPrompt);
     
-    console.log(`[${call_id}] ✅ Agent processing completed`);
-    console.log(`[${call_id}] 📊 Raw result:`, JSON.stringify(result, null, 2));
+    console.error(`[${call_id}] ✅ Agent processing completed`);
+    console.error(`[${call_id}] 📊 Raw result:`, JSON.stringify(result, null, 2));
     
     // Extract the tool result from the generatedItems - find any tool_call_output_item  
     const toolCallOutput = result?.state?._generatedItems?.find(item => 
       item.type === 'tool_call_output_item'
     );
     
-    console.log(`[${call_id}] 🔍 Debug toolCallOutput:`, JSON.stringify(toolCallOutput, null, 2));
+    console.error(`[${call_id}] 🔍 Debug toolCallOutput:`, JSON.stringify(toolCallOutput, null, 2));
     
     // Try multiple possible paths for the JSON data
     let outputText = null;
@@ -142,11 +142,11 @@ Please extract all available sales data with confidence scores and provide notes
     
     if (outputText) {
       try {
-        console.log(`[${call_id}] 📝 Output text:`, outputText);
+        console.error(`[${call_id}] 📝 Output text:`, outputText);
         // Check if outputText is already an object or needs parsing
         const parsedOutput = typeof outputText === 'string' ? JSON.parse(outputText) : outputText;
         const extractedData = parsedOutput.extracted_data;
-        console.log(`[${call_id}] 🎯 Extracted data:`, extractedData);
+        console.error(`[${call_id}] 🎯 Extracted data:`, extractedData);
         
         return {
           success: true,
@@ -162,11 +162,11 @@ Please extract all available sales data with confidence scores and provide notes
           }
         };
       } catch (parseError) {
-        console.log(`[${call_id}] ❌ Failed to parse tool output:`, parseError);
+        console.error(`[${call_id}] ❌ Failed to parse tool output:`, parseError);
       }
     }
     
-    console.log(`[${call_id}] ⚠️ No extraction result found in agent response`);
+    console.error(`[${call_id}] ⚠️ No extraction result found in agent response`);
     return {
       success: false,
       call_id,
