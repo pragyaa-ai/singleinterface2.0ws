@@ -128,8 +128,8 @@ Please extract all available sales data with confidence scores and provide notes
     
     if (toolCallOutput && toolCallOutput.output) {
       try {
-        // The output is in rawItem.output.text (nested structure)
-        const outputText = toolCallOutput.rawItem?.output?.text || toolCallOutput.output;
+        // The output is directly in toolCallOutput.output as a JSON string
+        const outputText = toolCallOutput.output;
         const parsedOutput = JSON.parse(outputText);
         const extractedData = parsedOutput.extracted_data;
         console.log(`[${call_id}] 🎯 Extracted data:`, extractedData);
