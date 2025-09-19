@@ -231,27 +231,31 @@ class QueueProcessor {
     const resultFilename = `call_${callId}_${timestamp}_result.json`;
     const resultPath = path.join(this.resultsDir, resultFilename);
 
+    // 🔧 OPTIMIZED: Clean, single-source structure without redundancy
     const resultData = {
       call_id: callId,
       processed_at: new Date().toISOString(),
+      success: agentResult.success,
       
-      // Agent extraction results
-      extraction_result: agentResult,
+      // 📊 PRIMARY: Extracted sales data (single source of truth)
+      extracted_data: agentResult.extracted_data || null,
       
-      // Queue metadata
-      queue_metadata: {
+      // 🎯 PROCESSING: Essential metadata only
+      processing: {
+        method: agentResult.processing_metadata?.processing_method || 'openai_agents_sdk',
+        conversation_entries: agentResult.processing_metadata?.conversation_entries || 0,
+        conversation_length: agentResult.processing_metadata?.conversation_length || 0,
+        processing_time_ms: agentResult.processing_metadata?.processing_time_ms || null,
         transcript_file: queueData.transcript_file,
-        processing_started_at: queueData.processing_started_at,
+        started_at: queueData.processing_started_at,
         completed_at: new Date().toISOString()
       },
       
-      // Processing summary
-      summary: {
-        success: agentResult.success,
-        extracted_data: agentResult.extracted_data || null,
-        processing_method: agentResult.processing_metadata?.processing_method || 'unknown',
-        confidence_scores: agentResult.extracted_data?.confidence_scores || null
-      }
+      // 🔍 OPTIONAL: Debug info (minimal, only if needed)
+      debug: process.env.NODE_ENV === 'development' ? {
+        agent_trace_id: agentResult.processing_metadata?.agent_result?.state?.trace?.id || null,
+        token_usage: agentResult.processing_metadata?.agent_result?.state?.context?.usage || null
+      } : undefined
     };
 
     try {

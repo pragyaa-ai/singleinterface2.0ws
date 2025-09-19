@@ -80,6 +80,7 @@ Use the extract_complete_sales_data tool with your findings.`,
 
 // Main processing function
 async function processTranscriptFile(transcriptFilePath) {
+  const startTime = Date.now(); // Track processing time
   try {
     console.error('🤖 Processing transcript file:', transcriptFilePath);
     
@@ -148,19 +149,20 @@ Please extract all available sales data with confidence scores and provide notes
         const extractedData = parsedOutput.extracted_data;
         console.error(`[${call_id}] 🎯 Extracted data:`, extractedData);
         
-        return {
-          success: true,
-          call_id,
-          extracted_data: extractedData,
-          processing_metadata: {
-            processed_at: new Date().toISOString(),
-            processing_method: 'openai_agents_sdk_full_context',
-            conversation_entries: conversation?.length || 0,
-            conversation_length: conversationText.length,
-            tool_call_output: parsedOutput,
-            agent_result: result
-          }
-        };
+           return {
+             success: true,
+             call_id,
+             extracted_data: extractedData,
+             processing_metadata: {
+               processed_at: new Date().toISOString(),
+               processing_method: 'openai_agents_sdk_full_context',
+               conversation_entries: conversation?.length || 0,
+               conversation_length: conversationText.length,
+               processing_time_ms: Date.now() - startTime,
+               tool_call_output: parsedOutput,
+               agent_result: result
+             }
+           };
       } catch (parseError) {
         console.error(`[${call_id}] ❌ Failed to parse tool output:`, parseError);
       }
@@ -171,6 +173,10 @@ Please extract all available sales data with confidence scores and provide notes
       success: false,
       call_id,
       error: 'No extraction result found in agent response',
+      processing_metadata: {
+        processing_time_ms: Date.now() - startTime,
+        processing_method: 'openai_agents_sdk_full_context'
+      },
       raw_result: result
     };
     
@@ -179,6 +185,10 @@ Please extract all available sales data with confidence scores and provide notes
     return {
       success: false,
       error: error.message,
+      processing_metadata: {
+        processing_time_ms: Date.now() - startTime,
+        processing_method: 'openai_agents_sdk_full_context'
+      },
       stack: error.stack
     };
   }
