@@ -77,7 +77,38 @@ interface Session {
 const port = Number(process.env.TELEPHONY_WS_PORT || 8080);
 const host = process.env.TELEPHONY_WS_HOST || '0.0.0.0';
 
-const server = http.createServer();
+const server = http.createServer((req, res) => {
+  // Handle Ozonetel XML requests for /getXML_SI/
+  if (req.url?.startsWith('/getXML_SI/')) {
+    console.log(`📞 Ozonetel XML request: ${req.method} ${req.url}`);
+    
+    // Parse query parameters to get call details
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const outbound_sid = url.searchParams.get('outbound_sid');
+    const event = url.searchParams.get('event');
+    const cid = url.searchParams.get('cid');
+    
+    console.log(`📞 Call details: sid=${outbound_sid}, event=${event}, cid=${cid}`);
+    
+    // Return XML response pointing to our WebSocket endpoint
+    const wsUrl = process.env.TELEPHONY_WS_URL || 'wss://ws-singleinterfacews.pragyaa.ai/ws';
+    const sipId = process.env.TELEPHONY_SIP_ID || outbound_sid || 'UNKNOWN';
+    
+    const xml = `<response><stream is_sip='true' url='${wsUrl}'>${sipId}</stream></response>`;
+    
+    res.writeHead(200, { 
+      'Content-Type': 'text/xml; charset=utf-8',
+      'Cache-Control': 'no-store'
+    });
+    res.end(xml);
+    
+    console.log(`📞 XML response sent: ${xml}`);
+  } else {
+    // Handle other requests
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not Found');
+  }
+});
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 const sessions = new Map<string, Session>();
