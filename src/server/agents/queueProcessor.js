@@ -1,6 +1,7 @@
 // 🔄 Queue Processor - Watches for new transcripts and triggers async processing
 const fs = require('fs');
 const path = require('path');
+const WebhookService = require('../../services/webhookService');
 const { spawn } = require('child_process');
 
 class QueueProcessor {
@@ -10,6 +11,7 @@ class QueueProcessor {
     this.resultsDir = path.join(process.cwd(), 'data', 'results');
     this.isProcessing = false;
     this.pollInterval = 5000; // Check every 5 seconds
+    this.webhookService = new WebhookService(); // 🆕 NEW: Initialize webhook service
     
     // 🔧 Ensure directories exist
     this.ensureDirectories();
@@ -329,6 +331,14 @@ class QueueProcessor {
       
       // Also update the original call file with processed data
       await this.updateOriginalCallFile(callId, agentResult.extracted_data);
+      
+      // 🆕 NEW: Trigger webhooks after successful processing
+      try {
+        await this.webhookService.processWebhooks(callId, resultData, transcriptData);
+      } catch (webhookError) {
+        // Don't fail the entire processing if webhooks fail
+        console.error(`[${callId}] ⚠️ Webhook delivery failed but processing completed:`, webhookError.message);
+      }
       
       return resultFilename;
     } catch (error) {
