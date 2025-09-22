@@ -55,6 +55,19 @@ interface TranscriptEntry {
   event_type?: string;
 }
 
+// NEW: Enhanced data point status tracking
+interface DataPointStatus {
+  value?: string;
+  status: 'verified' | 'captured' | 'needs_to_be_validated' | 'not_captured';
+  confidence?: number;
+  attempts: number;
+  timestamps: {
+    first_attempt?: number;
+    last_attempt?: number;
+    verified_at?: number;
+  };
+}
+
 interface Session {
   ucid: string;
   client: WebSocket;
@@ -67,6 +80,12 @@ interface Session {
     email_id?: string;
     verified: Set<string>;
     processing_status?: 'pending' | 'processing' | 'completed' | 'failed';
+    // NEW: Enhanced data point tracking
+    dataPoints?: {
+      full_name: DataPointStatus;
+      car_model: DataPointStatus;
+      email_id: DataPointStatus;
+    };
   };
   transcripts: string[]; // Keep for backward compatibility
   fullTranscript: TranscriptEntry[]; // 🔄 NEW: Rich transcript with timestamps
@@ -822,7 +841,25 @@ async function handleConnection(ws: WebSocket) {
             inputFrameBuffer: [],
             salesData: {
               verified: new Set<string>(),
-              processing_status: 'pending' // 🔄 NEW: Track async processing status
+              processing_status: 'pending', // 🔄 NEW: Track async processing status
+              // 🆕 NEW: Initialize enhanced data point tracking
+              dataPoints: {
+                full_name: {
+                  status: 'not_captured',
+                  attempts: 0,
+                  timestamps: {}
+                },
+                car_model: {
+                  status: 'not_captured',
+                  attempts: 0,
+                  timestamps: {}
+                },
+                email_id: {
+                  status: 'not_captured',
+                  attempts: 0,
+                  timestamps: {}
+                }
+              }
             },
             transcripts: [], // Keep for backward compatibility
             fullTranscript: [], // 🔄 NEW: Rich transcript with timestamps
