@@ -1,6 +1,24 @@
 module.exports = {
   apps: [
     {
+      name: 'voiceagent-next',
+      script: 'npm',
+      args: 'run start',
+      cwd: '/opt/voiceagent',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3000
+      },
+      env_production: {
+        NODE_ENV: 'production',
+        PORT: 3000
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G'
+    },
+    {
       name: 'voiceagent-telephony',
       script: 'npm',
       args: 'run telephony',
