@@ -24,20 +24,17 @@ class WebhookService {
    */
   transformToSingleInterfaceFormat(callId, resultData, transcriptData) {
     const startTime = transcriptData?.call_start_time ? 
-      new Date(transcriptData.call_start_time).toLocaleString('sv-SE').replace('T', ' ') :
-      new Date().toLocaleString('sv-SE').replace('T', ' ');
+      this.formatTimestamp(transcriptData.call_start_time) :
+      this.formatTimestamp(new Date());
     
     const endTime = transcriptData?.call_end_time ? 
-      new Date(transcriptData.call_end_time).toLocaleString('sv-SE').replace('T', ' ') :
-      new Date().toLocaleString('sv-SE').replace('T', ' ');
+      this.formatTimestamp(transcriptData.call_end_time) :
+      this.formatTimestamp(new Date());
     
     const duration = Math.round((transcriptData?.call_duration || 0) / 1000); // Convert to seconds
     
-    // Determine overall routing status
-    const overallStatus = resultData.extracted_data?.overall_status || 'incomplete';
-    const dealerRoutingStatus = overallStatus === 'complete';
-    const dealerRoutingReason = overallStatus === 'complete' ? 'call completed' : 
-      overallStatus === 'partial' ? 'some data missing' : 'unable to collect data';
+    // Determine dealer routing status and reason
+    const routingInfo = this.determineDealerRouting(resultData, transcriptData);
 
     // Handle dropoff information
     const dropoffInfo = this.extractDropoffInfo(resultData, transcriptData);
@@ -48,22 +45,153 @@ class WebhookService {
     return {
       id: `bot_${callId}`,
       call_ref_id: callId,
-      call_vendor: "Ozonetel",
-      recording_url: `${this.baseUrl}/recordings/call_${callId}.mp3`, // Placeholder
+      call_vendor: "Ozonetel", // Current testing vendor (will change to "Waybeo" in production)
+      recording_url: "", // No recording available currently
       start_time: startTime,
       end_time: endTime,
       duration: duration,
       language: {
-        welcome: "english",
-        conversational: "hindi" // Default, could be enhanced based on actual detection
+        welcome: "english", // Always starts in English
+        conversational: this.detectConversationalLanguage(transcriptData)
       },
       dealer_routing: {
-        status: dealerRoutingStatus,
-        reason: dealerRoutingReason,
-        time: endTime
+        status: routingInfo.status,
+        reason: routingInfo.reason,
+        time: routingInfo.time
       },
       dropoff: dropoffInfo,
       response_data: responseData
+    };
+  }
+
+  /**
+   * Format timestamp to Single Interface format: YYYY-MM-DD HH:mm:ss (no milliseconds)
+   */
+  formatTimestamp(timestamp) {
+    const date = new Date(timestamp);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+
+  /**
+   * Determine dealer routing status and reason
+   */
+  determineDealerRouting(resultData, transcriptData) {
+    const conversation = transcriptData?.conversation || [];
+    const overallStatus = resultData.extracted_data?.overall_status || 'incomplete';
+    const dataPoints = resultData.extracted_data?.data_points || {};
+    
+    // Check if customer explicitly requested to speak to dealer
+    const customerRequestedDealer = this.didCustomerRequestDealer(conversation);
+    
+    // Check if agent decided to route due to understanding issues
+    const hadUnderstandingIssues = this.hadUnderstandingIssues(resultData, conversation);
+    
+    // Determine routing status and reason
+    let status = false;
+    let reason = "";
+    let time = "";
+    
+    if (customerRequestedDealer.requested) {
+      // Customer specifically asked to talk to dealer
+      status = true;
+      reason = "Customer requested to speak with dealer";
+      time = customerRequestedDealer.timestamp;
+    } else if (overallStatus === 'complete') {
+      // All data collected successfully - route to dealer
+      status = true;
+      reason = "All data collected - routing to dealer";
+      time = transcriptData?.end_time ? 
+        this.formatTimestamp(transcriptData.end_time) : "";
+    } else if (hadUnderstandingIssues.hadIssues) {
+      // Unable to understand customer responses
+      status = true;
+      reason = "Unable to understand customer responses";
+      time = hadUnderstandingIssues.timestamp;
+    } else if (overallStatus === 'partial') {
+      // Some data collected but incomplete
+      status = false;
+      reason = "Partial data collected - call ended";
+      time = "";
+    } else {
+      // No data collected or call failed
+      status = false;
+      reason = "No data collected - call failed";
+      time = "";
+    }
+    
+    return { status, reason, time };
+  }
+
+  /**
+   * Check if customer explicitly requested to speak to a dealer
+   */
+  didCustomerRequestDealer(conversation) {
+    const userMessages = conversation.filter(entry => entry.speaker === 'user');
+    
+    const dealerRequestPatterns = [
+      /\b(dealer|agent|person|human|representative|sales|executive)\b/i,
+      /\b(talk to|speak to|connect me|transfer me)\b/i,
+      /\b(someone|anybody|koi|kisi se)\b/i,
+      /\b(vyakti|insaan|dealer se|sales se)\b/i // Hindi patterns
+    ];
+    
+    for (const message of userMessages) {
+      const text = message.text.toLowerCase();
+      const hasMultiplePatterns = dealerRequestPatterns.filter(pattern => pattern.test(text)).length >= 2;
+      
+      if (hasMultiplePatterns) {
+        return {
+          requested: true,
+          timestamp: this.formatTimestamp(message.timestamp)
+        };
+      }
+    }
+    
+    return { requested: false, timestamp: "" };
+  }
+
+  /**
+   * Check if there were understanding issues during the conversation
+   */
+  hadUnderstandingIssues(resultData, conversation) {
+    const qaCount = resultData.call_analytics?.question_answer_pairs?.length || 0;
+    const totalAttempts = Object.values(resultData.extracted_data?.data_points || {})
+      .reduce((sum, point) => sum + (point.attempts || 0), 0);
+    
+    // High reattempt ratio indicates understanding issues
+    const avgAttempts = qaCount > 0 ? totalAttempts / qaCount : 0;
+    
+    // Look for assistant messages indicating confusion
+    const assistantMessages = conversation.filter(entry => entry.speaker === 'assistant');
+    const confusionPatterns = [
+      /\b(sorry|pardon|didn't understand|can you repeat|samjha nahi)\b/i,
+      /\b(please say again|one more time|repeat|phir se)\b/i
+    ];
+    
+    let confusionCount = 0;
+    let lastConfusionTime = "";
+    
+    for (const message of assistantMessages) {
+      const hasConfusion = confusionPatterns.some(pattern => pattern.test(message.text));
+      if (hasConfusion) {
+        confusionCount++;
+        lastConfusionTime = this.formatTimestamp(message.timestamp);
+      }
+    }
+    
+    // Consider understanding issues if high reattempts OR multiple confusion indicators
+    const hadIssues = avgAttempts > 2 || confusionCount >= 2;
+    
+    return {
+      hadIssues,
+      timestamp: lastConfusionTime || ""
     };
   }
 
@@ -73,11 +201,10 @@ class WebhookService {
   extractDropoffInfo(resultData, transcriptData) {
     const dropoffPoint = resultData.call_analytics?.drop_off_point;
     
+    // If no explicit dropoff point, determine from conversation flow
     if (!dropoffPoint) {
-      return {
-        time: "",
-        action: ""
-      };
+      const dropoffInfo = this.inferDropoffFromConversation(resultData, transcriptData);
+      return dropoffInfo;
     }
 
     // Map internal dropoff events to Single Interface actions
@@ -85,13 +212,153 @@ class WebhookService {
       'name_request': 'name',
       'model_request': 'model', 
       'email_request': 'email',
-      'greeting': 'ivr'
+      'greeting': 'ivr',
+      'initial_greeting': 'ivr',
+      'welcome': 'ivr'
     };
 
     return {
-      time: new Date(dropoffPoint.timestamp).toLocaleString('sv-SE').replace('T', ' '),
+      time: this.formatTimestamp(dropoffPoint.timestamp),
       action: actionMap[dropoffPoint.lastEvent] || dropoffPoint.lastEvent || ""
     };
+  }
+
+  /**
+   * Infer dropoff stage from conversation and captured data
+   */
+  inferDropoffFromConversation(resultData, transcriptData) {
+    const dataPoints = resultData.extracted_data?.data_points || {};
+    const conversation = transcriptData?.conversation || [];
+    const overallStatus = resultData.extracted_data?.overall_status;
+    
+    // If call completed successfully, no dropoff
+    if (overallStatus === 'complete') {
+      return { time: "", action: "" };
+    }
+
+    // Find the last assistant message to determine what question was being asked
+    const lastAssistantMessage = conversation
+      .filter(entry => entry.speaker === 'assistant')
+      .pop();
+
+    let dropoffAction = "";
+    let dropoffTime = "";
+
+    if (lastAssistantMessage) {
+      dropoffTime = this.formatTimestamp(lastAssistantMessage.timestamp);
+      
+      // Determine dropoff stage based on what data we have and what was being asked
+      if (!dataPoints.full_name?.value) {
+        dropoffAction = "name";
+      } else if (!dataPoints.car_model?.value) {
+        dropoffAction = "model";
+      } else if (!dataPoints.email_id?.value) {
+        dropoffAction = "email";
+      } else {
+        // Check the last question being asked
+        const questionText = lastAssistantMessage.text.toLowerCase();
+        if (questionText.includes('name') || questionText.includes('naam')) {
+          dropoffAction = "name";
+        } else if (questionText.includes('model') || questionText.includes('car') || questionText.includes('vehicle')) {
+          dropoffAction = "model";
+        } else if (questionText.includes('email') || questionText.includes('mail')) {
+          dropoffAction = "email";
+        } else {
+          dropoffAction = "ivr";
+        }
+      }
+    } else {
+      // Very early dropoff - during IVR/greeting
+      dropoffAction = "ivr";
+      dropoffTime = transcriptData?.start_time || "";
+    }
+
+    return {
+      time: dropoffTime,
+      action: dropoffAction
+    };
+  }
+
+  /**
+   * Detect the conversational language based on user responses
+   */
+  detectConversationalLanguage(transcriptData) {
+    const conversation = transcriptData?.conversation || [];
+    
+    // Get user messages (customer responses)
+    const userMessages = conversation
+      .filter(entry => entry.speaker === 'user')
+      .map(entry => entry.text.toLowerCase());
+
+    if (userMessages.length === 0) {
+      return "english"; // Default if no user messages
+    }
+
+    // Language detection patterns
+    const languagePatterns = {
+      hindi: [
+        // Common Hindi words/phrases
+        /\b(haan|nahin|nahi|ji|acha|theek|samjha|samjhi|naam|kar|main|mera|meri|hai|hoon|kya|kaise|kab|kaha|kyun)\b/,
+        // Hindi greetings
+        /\b(namaste|namaskar|sat sri akal|adab)\b/,
+        // Hindi numbers
+        /\b(ek|do|teen|char|paanch|chhe|saat|aath|nau|das)\b/,
+        // Devanagari script detection
+        /[\u0900-\u097F]/
+      ],
+      tamil: [
+        // Common Tamil words
+        /\b(illa|irukku|naan|enna|epdi|eppadi|vanakkam)\b/,
+        // Tamil script detection
+        /[\u0B80-\u0BFF]/
+      ],
+      telugu: [
+        // Common Telugu words
+        /\b(ledu|undi|nenu|enti|ela|namaskaram)\b/,
+        // Telugu script detection
+        /[\u0C00-\u0C7F]/
+      ],
+      kannada: [
+        // Common Kannada words
+        /\b(illa|ide|naanu|yaava|hege|namaskara)\b/,
+        // Kannada script detection
+        /[\u0C80-\u0CFF]/
+      ],
+      gujarati: [
+        // Common Gujarati words
+        /\b(nathi|chhe|hun|shu|kevi|namaste)\b/,
+        // Gujarati script detection
+        /[\u0A80-\u0AFF]/
+      ],
+      punjabi: [
+        // Common Punjabi words
+        /\b(nahi|hai|main|ki|kive|sat sri akal)\b/,
+        // Punjabi script detection
+        /[\u0A00-\u0A7F]/
+      ]
+    };
+
+    // Count matches for each language
+    const languageScores = {};
+    
+    for (const [language, patterns] of Object.entries(languagePatterns)) {
+      languageScores[language] = 0;
+      
+      for (const message of userMessages) {
+        for (const pattern of patterns) {
+          if (pattern.test(message)) {
+            languageScores[language]++;
+          }
+        }
+      }
+    }
+
+    // Find language with highest score
+    const detectedLanguage = Object.entries(languageScores)
+      .reduce((a, b) => languageScores[a[0]] > languageScores[b[0]] ? a : b)[0];
+
+    // Return detected language if score > 0, otherwise default to Hindi
+    return languageScores[detectedLanguage] > 0 ? detectedLanguage : "hindi";
   }
 
   /**
@@ -166,8 +433,8 @@ class WebhookService {
         
         if (isRelevant) {
           attempts.push({
-            start_time: new Date(question.timestamp).toLocaleString('sv-SE').replace('T', ' '),
-            end_time: new Date(answer.timestamp).toLocaleString('sv-SE').replace('T', ' '),
+            start_time: this.formatTimestamp(question.timestamp),
+            end_time: this.formatTimestamp(answer.timestamp),
             sequence: sequence++
           });
         }
