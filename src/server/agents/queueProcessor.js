@@ -234,7 +234,7 @@ class QueueProcessor {
     const resultPath = path.join(this.resultsDir, resultFilename);
 
     // Load original transcript to get call analytics
-    const transcriptPath = path.join(this.processingDir, queueData.transcript_file);
+    const transcriptPath = path.join(this.transcriptsDir, queueData.transcript_file);
     let transcriptData = null;
     try {
       transcriptData = JSON.parse(fs.readFileSync(transcriptPath, 'utf8'));
@@ -259,22 +259,22 @@ class QueueProcessor {
         data_points: {
           full_name: {
             value: agentResult.extracted_data?.full_name || null,
-            status: this.getDataPointStatus(agentResult.extracted_data?.full_name, agentResult.extracted_data?.confidence_scores?.full_name),
-            confidence: agentResult.extracted_data?.confidence_scores?.full_name || 0,
+            status: this.getDataPointStatus(agentResult.extracted_data?.full_name, agentResult.extracted_data?.confidence_scores?.name_confidence),
+            confidence: agentResult.extracted_data?.confidence_scores?.name_confidence || 0,
             attempts: analytics.parameters_attempted?.includes('full_name') ? 1 : 0,
             timestamps: this.extractTimestamps(conversation, 'full_name')
           },
           car_model: {
             value: agentResult.extracted_data?.car_model || null,
-            status: this.getDataPointStatus(agentResult.extracted_data?.car_model, agentResult.extracted_data?.confidence_scores?.car_model),
-            confidence: agentResult.extracted_data?.confidence_scores?.car_model || 0,
+            status: this.getDataPointStatus(agentResult.extracted_data?.car_model, agentResult.extracted_data?.confidence_scores?.car_confidence),
+            confidence: agentResult.extracted_data?.confidence_scores?.car_confidence || 0,
             attempts: analytics.parameters_attempted?.includes('car_model') ? 1 : 0,
             timestamps: this.extractTimestamps(conversation, 'car_model')
           },
           email_id: {
             value: agentResult.extracted_data?.email_id || null,
-            status: this.getDataPointStatus(agentResult.extracted_data?.email_id, agentResult.extracted_data?.confidence_scores?.email_id),
-            confidence: agentResult.extracted_data?.confidence_scores?.email_id || 0,
+            status: this.getDataPointStatus(agentResult.extracted_data?.email_id, agentResult.extracted_data?.confidence_scores?.email_confidence),
+            confidence: agentResult.extracted_data?.confidence_scores?.email_confidence || 0,
             attempts: analytics.parameters_attempted?.includes('email_id') ? 1 : 0,
             timestamps: this.extractTimestamps(conversation, 'email_id')
           }
