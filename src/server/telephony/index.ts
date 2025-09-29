@@ -196,7 +196,7 @@ const telephonySDKTools = [
   {
     type: "function" as const,
     name: "capture_all_sales_data",
-    description: "Capture all sales data at once when conversation is complete",
+    description: "Complete the call by finalizing all collected sales data from the session",
     parameters: {
       type: "object",
       properties: {
@@ -204,7 +204,7 @@ const telephonySDKTools = [
         car_model: { type: "string", description: "Specific car model they are interested in" },
         email_id: { type: "string", description: "Customer's email address for follow-up" }
       },
-      required: ["full_name", "car_model", "email_id"],
+      required: [],
       additionalProperties: false,
     }
   }
@@ -289,20 +289,42 @@ function handleCaptureAllSalesData(session: Session, params: any) {
   const { full_name, car_model, email_id } = params;
   const ucid = session.ucid;
   
-  // Capture all data at once
-  session.salesData.full_name = full_name;
-  session.salesData.car_model = car_model;
-  session.salesData.email_id = email_id;
+  // Use session data if parameters are empty/missing
+  const finalData = {
+    full_name: full_name || session.salesData.full_name,
+    car_model: car_model || session.salesData.car_model,
+    email_id: email_id || session.salesData.email_id
+  };
   
-  console.log(`[${ucid}] 🎯 SDK Captured All Data:`, { full_name, car_model, email_id });
+  // Update session with final data
+  session.salesData.full_name = finalData.full_name;
+  session.salesData.car_model = finalData.car_model;
+  session.salesData.email_id = finalData.email_id;
+  
+  console.log(`[${ucid}] 🎯 SDK Finalizing All Data:`, finalData);
+  
+  // Check if we have all required data
+  if (!finalData.full_name || !finalData.car_model || !finalData.email_id) {
+    const missing = [];
+    if (!finalData.full_name) missing.push('full_name');
+    if (!finalData.car_model) missing.push('car_model');
+    if (!finalData.email_id) missing.push('email_id');
+    
+    return {
+      success: false,
+      message: `Missing required data: ${missing.join(', ')}`,
+      data: finalData,
+      status: 'incomplete'
+    };
+  }
   
   // Save complete data
   saveSalesDataToFile(session);
   
   return {
     success: true,
-    message: "All sales data captured successfully",
-    data: { full_name, car_model, email_id },
+    message: "All sales data finalized successfully",
+    data: finalData,
     status: 'complete'
   };
 }
@@ -675,7 +697,7 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
   if (!apiKey) throw new Error('OPENAI_API_KEY not set');
 
   return new Promise((resolve, reject) => {
-    const openaiWs = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2025-06-03', {
+    const openaiWs = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-realtime', {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'OpenAI-Beta': 'realtime=v1'
@@ -695,9 +717,9 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
           input_audio_transcription: { model: 'whisper-1' },
           turn_detection: {
             type: 'server_vad',
-            threshold: 0.5,
-            prefix_padding_ms: 300,
-            silence_duration_ms: 300
+            threshold: 0.3,
+            prefix_padding_ms: 400,
+            silence_duration_ms: 200
           },
           tools: telephonySDKTools,
           temperature: 0.8,
