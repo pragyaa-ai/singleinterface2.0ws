@@ -191,8 +191,10 @@ function handleSDKToolCall(session: Session, toolCall: any) {
 // 🎯 REMOVED: handleCaptureSalesData and handleVerifySalesData - using single function approach
 
 function handleCaptureAllSalesData(session: Session, params: any) {
-  const { call_status, completion_reason } = params;
+  const { call_status, completion_reason } = params || {};
   const ucid = session.ucid;
+  
+  console.log(`[${ucid}] 🎯 capture_all_sales_data called with params:`, params);
   
   // Extract any data mentioned during conversation from session
   const finalData = {
@@ -208,20 +210,26 @@ function handleCaptureAllSalesData(session: Session, params: any) {
   // Count how many data points we actually have
   const dataPointsCollected = Object.values(finalData).filter(value => value && value.trim && value.trim()).length;
   
-  // Determine actual status based on data collected
-  let actualStatus = 'no_data';
-  if (dataPointsCollected === 3) {
-    actualStatus = 'complete';
-  } else if (dataPointsCollected > 0) {
-    actualStatus = 'partial';
+  // Determine actual status based on data collected (use provided status or auto-detect)
+  let actualStatus = call_status || 'no_data';
+  if (!call_status) {
+    // Auto-detect status if not provided
+    if (dataPointsCollected === 3) {
+      actualStatus = 'complete';
+    } else if (dataPointsCollected > 0) {
+      actualStatus = 'partial';
+    }
   }
+  
+  // Provide default completion reason if not provided
+  const finalCompletionReason = completion_reason || `Auto-detected: ${dataPointsCollected} data points collected`;
   
   // Update session with final data and status
   session.salesData.full_name = finalData.full_name;
   session.salesData.car_model = finalData.car_model;
   session.salesData.email_id = finalData.email_id;
   session.salesData.call_status = actualStatus as 'complete' | 'partial' | 'no_data';
-  session.salesData.completion_reason = completion_reason;
+  session.salesData.completion_reason = finalCompletionReason;
   
   // Always save whatever data we have - even if partial or empty
   saveSalesDataToFile(session);
@@ -238,7 +246,7 @@ function handleCaptureAllSalesData(session: Session, params: any) {
     data: finalData,
     status: actualStatus,
     data_points_collected: dataPointsCollected,
-    completion_reason: completion_reason
+    completion_reason: finalCompletionReason
   };
 }
 
@@ -915,11 +923,14 @@ async function handleConnection(ws: WebSocket) {
                   }
                   
                   if (session && event.item.name) {
-                    // 🔍 CRITICAL FIX: Check if arguments are meaningful before execution
+                    // 🔍 UPDATED: Allow capture_all_sales_data to work with empty arguments (gets data from session)
                     const hasValidArgs = Object.keys(args).length > 0 && 
                                         Object.values(args).some(val => val !== null && val !== undefined && val !== '');
                     
-                    if (!hasValidArgs) {
+                    // Special case: capture_all_sales_data can work with empty args (uses session data)
+                    const isValidCaptureAllCall = event.item.name === 'capture_all_sales_data';
+                    
+                    if (!hasValidArgs && !isValidCaptureAllCall) {
                       console.log(`[${ucid}] ⚠️ Skipping function call with empty/invalid args: ${event.item.name}`);
                       console.log(`[${ucid}] 📝 Recent transcripts for context:`, session.transcripts || []);
                       
