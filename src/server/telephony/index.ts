@@ -80,6 +80,8 @@ interface Session {
     email_id?: string;
     verified: Set<string>;
     processing_status?: 'pending' | 'processing' | 'completed' | 'failed';
+    call_status?: 'complete' | 'partial' | 'no_data';
+    completion_reason?: string;
     // NEW: Enhanced data point tracking
     dataPoints?: {
       full_name: DataPointStatus;
@@ -145,72 +147,32 @@ const resultsDir = path.join(process.cwd(), 'data', 'results');
   }
 });
 
-// 🎯 AGENTS SDK TOOLS - Ported for telephony use
+// 🎯 SIMPLIFIED AGENTS SDK TOOLS - Single function approach
 const telephonySDKTools = [
   {
     type: "function" as const,
-    name: "capture_sales_data",
-    description: "Capture and store individual pieces of sales lead information during the verification process",
-    parameters: {
-      type: "object",
-      properties: {
-        data_type: {
-          type: "string",
-          enum: ["full_name", "car_model", "email_id"],
-          description: "The type of sales data being captured"
-        },
-        value: {
-          type: "string", 
-          description: "The actual data value provided by the customer"
-        },
-        notes: {
-          type: "string",
-          description: "Any additional notes or context about this data point"
-        }
-      },
-      required: ["data_type", "value"],
-      additionalProperties: false,
-    }
-  },
-  {
-    type: "function" as const,
-    name: "verify_sales_data",
-    description: "Verify and confirm previously captured sales data with the customer",
-    parameters: {
-      type: "object",
-      properties: {
-        data_type: {
-          type: "string",
-          enum: ["full_name", "car_model", "email_id"],
-          description: "The type of sales data being verified"
-        },
-        confirmed: {
-          type: "boolean",
-          description: "Whether the customer confirmed this data as correct"
-        }
-      },
-      required: ["data_type", "confirmed"],
-      additionalProperties: false,
-    }
-  },
-  {
-    type: "function" as const,
     name: "capture_all_sales_data",
-    description: "Complete the call by finalizing all collected sales data from the session",
+    description: "Capture and finalize all available sales data from the conversation. Call this when ready to end the call - whether you have collected all 3 data points (name, car model, email) or only partial data. Any data mentioned during the conversation will be automatically captured from the session.",
     parameters: {
       type: "object",
       properties: {
-        full_name: { type: "string", description: "Complete name of the potential customer" },
-        car_model: { type: "string", description: "Specific car model they are interested in" },
-        email_id: { type: "string", description: "Customer's email address for follow-up" }
+        call_status: {
+          type: "string",
+          enum: ["complete", "partial", "no_data"],
+          description: "Status of data collection: complete (all 3 data points), partial (1-2 data points), or no_data (customer didn't provide any useful information)"
+        },
+        completion_reason: {
+          type: "string",
+          description: "Reason for ending the call (e.g., 'customer provided all details', 'customer hung up', 'customer declined to share remaining details')"
+        }
       },
-      required: [],
+      required: ["call_status"],
       additionalProperties: false,
     }
   }
 ];
 
-// 🎯 SDK TOOL EXECUTION HANDLERS
+// 🎯 SIMPLIFIED SDK TOOL EXECUTION HANDLER
 function handleSDKToolCall(session: Session, toolCall: any) {
   const ucid = session.ucid;
   const { name, parameters } = toolCall;
@@ -218,10 +180,6 @@ function handleSDKToolCall(session: Session, toolCall: any) {
   console.log(`[${ucid}] 🔧 SDK Tool Called: ${name}`, parameters);
   
   switch (name) {
-    case 'capture_sales_data':
-      return handleCaptureSalesData(session, parameters);
-    case 'verify_sales_data':
-      return handleVerifySalesData(session, parameters);
     case 'capture_all_sales_data':
       return handleCaptureAllSalesData(session, parameters);
     default:
@@ -230,102 +188,57 @@ function handleSDKToolCall(session: Session, toolCall: any) {
   }
 }
 
-function handleCaptureSalesData(session: Session, params: any) {
-  const { data_type, value, notes } = params;
-  const ucid = session.ucid;
-  
-  // 🎯 HYBRID APPROACH: Update session data (like current regex)
-  if (data_type === 'full_name') {
-    session.salesData.full_name = value;
-    session.lastCapturedData = 'full_name';
-  } else if (data_type === 'car_model') {
-    session.salesData.car_model = value;
-    session.lastCapturedData = 'car_model';
-  } else if (data_type === 'email_id') {
-    session.salesData.email_id = value;
-    session.lastCapturedData = 'email_id';
-  }
-  
-  console.log(`[${ucid}] 🎯 SDK Captured ${data_type}: ${value}${notes ? ` (${notes})` : ''}`);
-  
-  // Check if data is complete and save
-  checkDataCompletion(session);
-  
-  return {
-    success: true,
-    message: `Successfully captured ${data_type}: ${value}`,
-    data_type,
-    value,
-    status: 'captured'
-  };
-}
-
-function handleVerifySalesData(session: Session, params: any) {
-  const { data_type, confirmed } = params;
-  const ucid = session.ucid;
-  
-  if (confirmed) {
-    session.salesData.verified.add(data_type);
-    console.log(`[${ucid}] ✅ SDK Verified ${data_type}: Confirmed`);
-  } else {
-    // If not confirmed, remove the data and allow re-capture
-    if (data_type === 'full_name') session.salesData.full_name = undefined;
-    if (data_type === 'car_model') session.salesData.car_model = undefined;
-    if (data_type === 'email_id') session.salesData.email_id = undefined;
-    session.salesData.verified.delete(data_type);
-    console.log(`[${ucid}] ❌ SDK Verification ${data_type}: Rejected - data cleared`);
-  }
-  
-  return {
-    success: true,
-    message: `${data_type} ${confirmed ? 'confirmed' : 'rejected'}`,
-    data_type,
-    confirmed,
-    status: confirmed ? 'verified' : 'rejected'
-  };
-}
+// 🎯 REMOVED: handleCaptureSalesData and handleVerifySalesData - using single function approach
 
 function handleCaptureAllSalesData(session: Session, params: any) {
-  const { full_name, car_model, email_id } = params;
+  const { call_status, completion_reason } = params;
   const ucid = session.ucid;
   
-  // Use session data if parameters are empty/missing
+  // Extract any data mentioned during conversation from session
   const finalData = {
-    full_name: full_name || session.salesData.full_name,
-    car_model: car_model || session.salesData.car_model,
-    email_id: email_id || session.salesData.email_id
+    full_name: session.salesData.full_name || undefined,
+    car_model: session.salesData.car_model || undefined,
+    email_id: session.salesData.email_id || undefined
   };
   
-  // Update session with final data
+  console.log(`[${ucid}] 🎯 SDK Finalizing Data - Status: ${call_status}`);
+  console.log(`[${ucid}] 📋 Available Data:`, finalData);
+  console.log(`[${ucid}] 📝 Completion Reason:`, completion_reason);
+  
+  // Count how many data points we actually have
+  const dataPointsCollected = Object.values(finalData).filter(value => value && value.trim && value.trim()).length;
+  
+  // Determine actual status based on data collected
+  let actualStatus = 'no_data';
+  if (dataPointsCollected === 3) {
+    actualStatus = 'complete';
+  } else if (dataPointsCollected > 0) {
+    actualStatus = 'partial';
+  }
+  
+  // Update session with final data and status
   session.salesData.full_name = finalData.full_name;
   session.salesData.car_model = finalData.car_model;
   session.salesData.email_id = finalData.email_id;
+  session.salesData.call_status = actualStatus as 'complete' | 'partial' | 'no_data';
+  session.salesData.completion_reason = completion_reason;
   
-  console.log(`[${ucid}] 🎯 SDK Finalizing All Data:`, finalData);
-  
-  // Check if we have all required data
-  if (!finalData.full_name || !finalData.car_model || !finalData.email_id) {
-    const missing = [];
-    if (!finalData.full_name) missing.push('full_name');
-    if (!finalData.car_model) missing.push('car_model');
-    if (!finalData.email_id) missing.push('email_id');
-    
-    return {
-      success: false,
-      message: `Missing required data: ${missing.join(', ')}`,
-      data: finalData,
-      status: 'incomplete'
-    };
-  }
-  
-  // Save complete data
+  // Always save whatever data we have - even if partial or empty
   saveSalesDataToFile(session);
+  
+  const statusMessages = {
+    'complete': `All 3 data points collected successfully: ${Object.keys(finalData).filter(k => finalData[k as keyof typeof finalData]).join(', ')}`,
+    'partial': `${dataPointsCollected} data point(s) collected: ${Object.keys(finalData).filter(k => finalData[k as keyof typeof finalData]).join(', ')}`,
+    'no_data': 'No customer data was collected during this call'
+  };
   
   return {
     success: true,
-    message: "All sales data finalized successfully",
+    message: statusMessages[actualStatus as keyof typeof statusMessages],
     data: finalData,
-    status: 'complete'
+    status: actualStatus,
+    data_points_collected: dataPointsCollected,
+    completion_reason: completion_reason
   };
 }
 
@@ -774,7 +687,7 @@ Occasionally use natural fillers like "hmm," "um," or "you know?" softly and spa
   "I want to make sure I get this right… An expert will call back to validate this. Let me… move on to the next detail."
   and mark the record as *Need_expert_review*.
 - Always confirm gently: "Is this correct?"
-- Immediately capture details the moment you hear them — do not delay or reformat.
+- Remember details as they are shared during conversation, but DO NOT call capture_all_sales_data until you are ready to end the call.
 - For brand extraction, if the car model contains "Mahindra", extract "Mahindra". If not confidently determinable, set brand to "Unknown" and add *Need_expert_review*.
 - If a customer asks for a *non-Mahindra brand*, politely respond in a conversational way:
   "I understand you mentioned <brand>… but since we are a Mahindra dealer, we can only take enquiries for Mahindra vehicles. Could you please tell me which Mahindra model you are interested in? We have vehicles like XUV700, Scorpio N, Thar, Bolero, XUV300, 3XO, and many more."
@@ -809,11 +722,25 @@ If unclear responses occur, ask again politely; after 2 failed attempts, say exa
 and mark as Need_expert_review.
 
 # Completion Protocol (MANDATORY)
-Once all three details are collected:
-Thank the customer: "Thank you so much for confirming all the details." / "Wonderful, I have noted everything down. Thank you for your time." / "Great, thanks a lot for providing these details."
-Then say: "We will now connect you with the Mahindra dealer near you.............. Please hold on."
 
-Remember: Your success is measured by complete, accurate Mahindra sales data collection with warm, respectful Indian hospitality.`
+## When to End the Call:
+1. **Complete Data (All 3 points)**: After collecting name, car model, and email
+2. **Partial Data**: If customer provides only 1-2 data points and indicates they want to end the call
+3. **No Data**: If customer doesn't provide any useful information and wants to end
+
+## How to End the Call:
+1. Thank the customer appropriately:
+   - Complete: "Thank you so much for confirming all the details."
+   - Partial: "Thank you for the information you've shared with me."
+   - No data: "Thank you for your time today."
+
+2. Say farewell: "We will now connect you with the Mahindra dealer near you.............. Please hold on."
+
+3. **CRITICAL**: Call capture_all_sales_data function with:
+   - call_status: "complete", "partial", or "no_data"
+   - completion_reason: Brief explanation (e.g., "customer provided all details", "customer hung up after giving name and model")
+
+Remember: Always call capture_all_sales_data before ending - it will save whatever data was collected during the conversation, even if incomplete.`
         }
       };
       
