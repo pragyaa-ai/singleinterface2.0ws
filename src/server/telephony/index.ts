@@ -80,7 +80,7 @@ interface Session {
     email_id?: string;
     verified: Set<string>;
     processing_status?: 'pending' | 'processing' | 'completed' | 'failed';
-    call_status?: 'complete' | 'partial' | 'no_data';
+    call_status?: 'complete' | 'partial' | 'no_data' | 'awaiting_processing';
     completion_reason?: string;
     // NEW: Enhanced data point tracking
     dataPoints?: {
@@ -194,59 +194,32 @@ function handleCaptureAllSalesData(session: Session, params: any) {
   const { call_status, completion_reason } = params || {};
   const ucid = session.ucid;
   
-  console.log(`[${ucid}] 🎯 capture_all_sales_data called with params:`, params);
+  console.log(`[${ucid}] 🎯 capture_all_sales_data called - signaling call completion`);
+  console.log(`[${ucid}] 📝 AI-provided status: ${call_status || 'not specified'}`);
+  console.log(`[${ucid}] 📝 AI-provided reason: ${completion_reason || 'not specified'}`);
   
-  // Extract any data mentioned during conversation from session
-  const finalData = {
-    full_name: session.salesData.full_name || undefined,
-    car_model: session.salesData.car_model || undefined,
-    email_id: session.salesData.email_id || undefined
-  };
+  // Use AI-provided status or default to "awaiting_processing"
+  const finalStatus = call_status || 'awaiting_processing';
+  const finalReason = completion_reason || 'Call completed - data extraction will happen via queue processor';
   
-  console.log(`[${ucid}] 🎯 SDK Finalizing Data - Status: ${call_status}`);
-  console.log(`[${ucid}] 📋 Available Data:`, finalData);
-  console.log(`[${ucid}] 📝 Completion Reason:`, completion_reason);
+  // Store AI assessment for queue processor reference
+  session.salesData.call_status = finalStatus as 'complete' | 'partial' | 'no_data' | 'awaiting_processing';
+  session.salesData.completion_reason = finalReason;
   
-  // Count how many data points we actually have
-  const dataPointsCollected = Object.values(finalData).filter(value => value && value.trim && value.trim()).length;
+  console.log(`[${ucid}] ✅ Call completion recorded - transcript will be processed by queue processor`);
+  console.log(`[${ucid}] 📊 AI Assessment: ${finalStatus} (${finalReason})`);
   
-  // Determine actual status based on data collected (use provided status or auto-detect)
-  let actualStatus = call_status || 'no_data';
-  if (!call_status) {
-    // Auto-detect status if not provided
-    if (dataPointsCollected === 3) {
-      actualStatus = 'complete';
-    } else if (dataPointsCollected > 0) {
-      actualStatus = 'partial';
-    }
-  }
-  
-  // Provide default completion reason if not provided
-  const finalCompletionReason = completion_reason || `Auto-detected: ${dataPointsCollected} data points collected`;
-  
-  // Update session with final data and status
-  session.salesData.full_name = finalData.full_name;
-  session.salesData.car_model = finalData.car_model;
-  session.salesData.email_id = finalData.email_id;
-  session.salesData.call_status = actualStatus as 'complete' | 'partial' | 'no_data';
-  session.salesData.completion_reason = finalCompletionReason;
-  
-  // Always save whatever data we have - even if partial or empty
+  // Save basic call completion info (actual data extraction happens via queue processor)
   saveSalesDataToFile(session);
-  
-  const statusMessages = {
-    'complete': `All 3 data points collected successfully: ${Object.keys(finalData).filter(k => finalData[k as keyof typeof finalData]).join(', ')}`,
-    'partial': `${dataPointsCollected} data point(s) collected: ${Object.keys(finalData).filter(k => finalData[k as keyof typeof finalData]).join(', ')}`,
-    'no_data': 'No customer data was collected during this call'
-  };
   
   return {
     success: true,
-    message: statusMessages[actualStatus as keyof typeof statusMessages],
-    data: finalData,
-    status: actualStatus,
-    data_points_collected: dataPointsCollected,
-    completion_reason: finalCompletionReason
+    message: "Call completed successfully. Data extraction will be performed by the queue processor using the full conversation transcript.",
+    ai_assessment: {
+      status: finalStatus,
+      reason: finalReason
+    },
+    note: "Actual sales data will be available in /data/results after queue processing"
   };
 }
 
@@ -295,7 +268,12 @@ function extractSalesData(session: Session, transcript: string) {
   // 🔧 CRITICAL FIX: Extract car model patterns (allow overwriting for repeated info)
   console.log(`[${ucid}] 🔍 Attempting car model extraction...`);
   const carBrands = ['toyota', 'honda', 'maruti', 'hyundai', 'tata', 'mahindra', 'ford', 'chevrolet', 'volkswagen', 'bmw', 'mercedes', 'audi', 'nissan', 'kia'];
-  const carModels = ['swift', 'baleno', 'dzire', 'vitara', 'ciaz', 'ertiga', 'xl6', 'brezza', 'city', 'amaze', 'jazz', 'wr-v', 'civic', 'accord', 'camry', 'innova', 'fortuner', 'corolla', 'i10', 'i20', 'venue', 'creta', 'verna', 'tucson', 'elantra', 'santafe'];
+  const carModels = [
+    // Mahindra models (primary focus)
+    'xuv700', 'xuv 700', 'scorpio n', 'scorpio-n', 'thar', 'bolero', 'xuv300', 'xuv 300', '3xo', 'scorpio', 'xylo', 'tuv300', 'tuv 300', 'marazzo', 'alturas',
+    // Other brands
+    'swift', 'baleno', 'dzire', 'vitara', 'ciaz', 'ertiga', 'xl6', 'brezza', 'city', 'amaze', 'jazz', 'wr-v', 'civic', 'accord', 'camry', 'innova', 'fortuner', 'corolla', 'i10', 'i20', 'venue', 'creta', 'verna', 'tucson', 'elantra', 'santafe'
+  ];
   
   for (const brand of carBrands) {
     if (text.includes(brand)) {
