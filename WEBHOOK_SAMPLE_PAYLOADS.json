@@ -1,0 +1,726 @@
+{
+  "documentation": "Sample webhook payloads sent to SingleInterface API",
+  "endpoint": "POST https://singleinterfacews.pragyaa.ai/api/webhooks/singleinterface",
+  
+  "samples": {
+    "scenario_1_complete_success": {
+      "description": "Perfect call - all data collected, routing to dealer",
+      "payload": {
+        "id": "bot_18882175837982271",
+        "call_ref_id": "18882175837982271",
+        "call_vendor": "Ozonetel",
+        "recording_url": "",
+        "start_time": "2025-10-02 14:25:00",
+        "end_time": "2025-10-02 14:27:30",
+        "duration": 150,
+        "language": {
+          "welcome": "english",
+          "conversational": "hindi"
+        },
+        "dealer_routing": {
+          "status": true,
+          "reason": "All data collected - routing to dealer",
+          "time": "2025-10-02 14:27:30"
+        },
+        "dropoff": {
+          "time": "",
+          "action": ""
+        },
+        "response_data": [
+          {
+            "key_label": "What's your name",
+            "key_value": "name",
+            "key_response": "Rahul Sharma",
+            "attempts": 1,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 14:25:10",
+                "end_time": "2025-10-02 14:25:15",
+                "sequence": 1
+              }
+            ],
+            "remarks": "verified"
+          },
+          {
+            "key_label": "Which model you are looking for",
+            "key_value": "model",
+            "key_response": "Tata Nexon EV",
+            "attempts": 1,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 14:26:00",
+                "end_time": "2025-10-02 14:26:05",
+                "sequence": 1
+              }
+            ],
+            "remarks": "verified"
+          },
+          {
+            "key_label": "What is your email id",
+            "key_value": "email",
+            "key_response": "rahul.sharma@gmail.com",
+            "attempts": 2,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 14:26:30",
+                "end_time": "2025-10-02 14:26:35",
+                "sequence": 1
+              },
+              {
+                "start_time": "2025-10-02 14:26:50",
+                "end_time": "2025-10-02 14:27:00",
+                "sequence": 2
+              }
+            ],
+            "remarks": "verified"
+          }
+        ]
+      },
+      "analysis": {
+        "outcome": "SUCCESS",
+        "data_collected": "3/3",
+        "total_attempts": 4,
+        "avg_attempts_per_field": 1.33,
+        "call_quality": "GOOD",
+        "action_required": "Route to dealer immediately"
+      }
+    },
+
+    "scenario_2_partial_data": {
+      "description": "Customer provided name and model, but hung up before email",
+      "payload": {
+        "id": "bot_18882175837982272",
+        "call_ref_id": "18882175837982272",
+        "call_vendor": "Ozonetel",
+        "recording_url": "",
+        "start_time": "2025-10-02 15:10:00",
+        "end_time": "2025-10-02 15:11:20",
+        "duration": 80,
+        "language": {
+          "welcome": "english",
+          "conversational": "english"
+        },
+        "dealer_routing": {
+          "status": false,
+          "reason": "Partial data collected - call ended",
+          "time": ""
+        },
+        "dropoff": {
+          "time": "2025-10-02 15:11:15",
+          "action": "email"
+        },
+        "response_data": [
+          {
+            "key_label": "What's your name",
+            "key_value": "name",
+            "key_response": "Priya Mehta",
+            "attempts": 1,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 15:10:15",
+                "end_time": "2025-10-02 15:10:18",
+                "sequence": 1
+              }
+            ],
+            "remarks": "verified"
+          },
+          {
+            "key_label": "Which model you are looking for",
+            "key_value": "model",
+            "key_response": "Hyundai Creta",
+            "attempts": 1,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 15:10:40",
+                "end_time": "2025-10-02 15:10:45",
+                "sequence": 1
+              }
+            ],
+            "remarks": "verified"
+          },
+          {
+            "key_label": "What is your email id",
+            "key_value": "email",
+            "key_response": "",
+            "attempts": 1,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 15:11:10",
+                "end_time": "2025-10-02 15:11:15",
+                "sequence": 1
+              }
+            ],
+            "remarks": "not_available"
+          }
+        ]
+      },
+      "analysis": {
+        "outcome": "PARTIAL",
+        "data_collected": "2/3",
+        "dropoff_stage": "email",
+        "total_attempts": 3,
+        "avg_attempts_per_field": 1.0,
+        "call_quality": "FAIR",
+        "action_required": "Follow-up via phone/SMS to collect email"
+      }
+    },
+
+    "scenario_3_customer_requested_agent": {
+      "description": "Customer asked to speak with human agent after providing name",
+      "payload": {
+        "id": "bot_18882175837982273",
+        "call_ref_id": "18882175837982273",
+        "call_vendor": "Ozonetel",
+        "recording_url": "",
+        "start_time": "2025-10-02 16:00:00",
+        "end_time": "2025-10-02 16:01:45",
+        "duration": 105,
+        "language": {
+          "welcome": "english",
+          "conversational": "hindi"
+        },
+        "dealer_routing": {
+          "status": true,
+          "reason": "Customer requested to speak with dealer",
+          "time": "2025-10-02 16:01:30"
+        },
+        "dropoff": {
+          "time": "",
+          "action": ""
+        },
+        "response_data": [
+          {
+            "key_label": "What's your name",
+            "key_value": "name",
+            "key_response": "Amit Kumar",
+            "attempts": 1,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 16:00:20",
+                "end_time": "2025-10-02 16:00:25",
+                "sequence": 1
+              }
+            ],
+            "remarks": "verified"
+          },
+          {
+            "key_label": "Which model you are looking for",
+            "key_value": "model",
+            "key_response": "",
+            "attempts": 0,
+            "attempts_details": [],
+            "remarks": "not_attempted"
+          },
+          {
+            "key_label": "What is your email id",
+            "key_value": "email",
+            "key_response": "",
+            "attempts": 0,
+            "attempts_details": [],
+            "remarks": "not_attempted"
+          }
+        ]
+      },
+      "analysis": {
+        "outcome": "ESCALATED",
+        "data_collected": "1/3",
+        "escalation_reason": "Customer preference for human interaction",
+        "total_attempts": 1,
+        "call_quality": "N/A",
+        "action_required": "Route to dealer immediately (HIGH PRIORITY)"
+      }
+    },
+
+    "scenario_4_understanding_issues": {
+      "description": "Multiple reattempts due to language/communication barriers",
+      "payload": {
+        "id": "bot_18882175837982274",
+        "call_ref_id": "18882175837982274",
+        "call_vendor": "Ozonetel",
+        "recording_url": "",
+        "start_time": "2025-10-02 17:00:00",
+        "end_time": "2025-10-02 17:03:45",
+        "duration": 225,
+        "language": {
+          "welcome": "english",
+          "conversational": "tamil"
+        },
+        "dealer_routing": {
+          "status": true,
+          "reason": "Unable to understand customer responses",
+          "time": "2025-10-02 17:03:20"
+        },
+        "dropoff": {
+          "time": "",
+          "action": ""
+        },
+        "response_data": [
+          {
+            "key_label": "What's your name",
+            "key_value": "name",
+            "key_response": "Muthu",
+            "attempts": 3,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 17:00:30",
+                "end_time": "2025-10-02 17:00:35",
+                "sequence": 1
+              },
+              {
+                "start_time": "2025-10-02 17:01:00",
+                "end_time": "2025-10-02 17:01:10",
+                "sequence": 2
+              },
+              {
+                "start_time": "2025-10-02 17:01:40",
+                "end_time": "2025-10-02 17:01:50",
+                "sequence": 3
+              }
+            ],
+            "remarks": "verified"
+          },
+          {
+            "key_label": "Which model you are looking for",
+            "key_value": "model",
+            "key_response": "",
+            "attempts": 4,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 17:02:00",
+                "end_time": "2025-10-02 17:02:15",
+                "sequence": 1
+              },
+              {
+                "start_time": "2025-10-02 17:02:30",
+                "end_time": "2025-10-02 17:02:45",
+                "sequence": 2
+              },
+              {
+                "start_time": "2025-10-02 17:03:00",
+                "end_time": "2025-10-02 17:03:10",
+                "sequence": 3
+              },
+              {
+                "start_time": "2025-10-02 17:03:15",
+                "end_time": "2025-10-02 17:03:20",
+                "sequence": 4
+              }
+            ],
+            "remarks": "not_available"
+          },
+          {
+            "key_label": "What is your email id",
+            "key_value": "email",
+            "key_response": "",
+            "attempts": 0,
+            "attempts_details": [],
+            "remarks": "not_attempted"
+          }
+        ]
+      },
+      "analysis": {
+        "outcome": "COMMUNICATION_ISSUES",
+        "data_collected": "1/3",
+        "total_attempts": 7,
+        "avg_attempts_per_field": 3.5,
+        "call_quality": "POOR",
+        "issues_detected": "High reattempt ratio, Tamil language customer may need Tamil-speaking agent",
+        "action_required": "Route to Tamil-speaking dealer"
+      }
+    },
+
+    "scenario_5_early_dropout": {
+      "description": "Customer hung up during initial greeting/IVR",
+      "payload": {
+        "id": "bot_18882175837982275",
+        "call_ref_id": "18882175837982275",
+        "call_vendor": "Ozonetel",
+        "recording_url": "",
+        "start_time": "2025-10-02 18:00:00",
+        "end_time": "2025-10-02 18:00:25",
+        "duration": 25,
+        "language": {
+          "welcome": "english",
+          "conversational": "english"
+        },
+        "dealer_routing": {
+          "status": false,
+          "reason": "No data collected - call failed",
+          "time": ""
+        },
+        "dropoff": {
+          "time": "2025-10-02 18:00:20",
+          "action": "ivr"
+        },
+        "response_data": [
+          {
+            "key_label": "What's your name",
+            "key_value": "name",
+            "key_response": "",
+            "attempts": 0,
+            "attempts_details": [],
+            "remarks": "not_attempted"
+          },
+          {
+            "key_label": "Which model you are looking for",
+            "key_value": "model",
+            "key_response": "",
+            "attempts": 0,
+            "attempts_details": [],
+            "remarks": "not_attempted"
+          },
+          {
+            "key_label": "What is your email id",
+            "key_value": "email",
+            "key_response": "",
+            "attempts": 0,
+            "attempts_details": [],
+            "remarks": "not_attempted"
+          }
+        ]
+      },
+      "analysis": {
+        "outcome": "FAILED",
+        "data_collected": "0/3",
+        "dropoff_stage": "ivr",
+        "duration_analysis": "Very short call (25 seconds) - likely wrong number or customer busy",
+        "call_quality": "N/A",
+        "action_required": "No immediate action - may retry later"
+      }
+    },
+
+    "scenario_6_no_email_provided": {
+      "description": "Customer provided name and model but declined to share email",
+      "payload": {
+        "id": "bot_18882175837982276",
+        "call_ref_id": "18882175837982276",
+        "call_vendor": "Ozonetel",
+        "recording_url": "",
+        "start_time": "2025-10-02 19:00:00",
+        "end_time": "2025-10-02 19:02:15",
+        "duration": 135,
+        "language": {
+          "welcome": "english",
+          "conversational": "hindi"
+        },
+        "dealer_routing": {
+          "status": false,
+          "reason": "Partial data collected - call ended",
+          "time": ""
+        },
+        "dropoff": {
+          "time": "2025-10-02 19:02:10",
+          "action": "email"
+        },
+        "response_data": [
+          {
+            "key_label": "What's your name",
+            "key_value": "name",
+            "key_response": "Sneha Reddy",
+            "attempts": 1,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 19:00:20",
+                "end_time": "2025-10-02 19:00:25",
+                "sequence": 1
+              }
+            ],
+            "remarks": "verified"
+          },
+          {
+            "key_label": "Which model you are looking for",
+            "key_value": "model",
+            "key_response": "Maruti Brezza",
+            "attempts": 1,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 19:01:00",
+                "end_time": "2025-10-02 19:01:05",
+                "sequence": 1
+              }
+            ],
+            "remarks": "verified"
+          },
+          {
+            "key_label": "What is your email id",
+            "key_value": "email",
+            "key_response": "",
+            "attempts": 3,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 19:01:30",
+                "end_time": "2025-10-02 19:01:40",
+                "sequence": 1
+              },
+              {
+                "start_time": "2025-10-02 19:01:50",
+                "end_time": "2025-10-02 19:02:00",
+                "sequence": 2
+              },
+              {
+                "start_time": "2025-10-02 19:02:05",
+                "end_time": "2025-10-02 19:02:10",
+                "sequence": 3
+              }
+            ],
+            "remarks": "not_available"
+          }
+        ]
+      },
+      "analysis": {
+        "outcome": "PARTIAL_PRIVACY_CONCERN",
+        "data_collected": "2/3",
+        "missing_field": "email",
+        "total_attempts": 5,
+        "avg_attempts_per_field": 1.67,
+        "call_quality": "FAIR",
+        "customer_behavior": "Customer willing to share basic info but hesitant about email (privacy concerns)",
+        "action_required": "Use phone number for follow-up, don't push for email"
+      }
+    },
+
+    "scenario_7_multilingual_switching": {
+      "description": "Customer started in Hindi but switched to English mid-conversation",
+      "payload": {
+        "id": "bot_18882175837982277",
+        "call_ref_id": "18882175837982277",
+        "call_vendor": "Ozonetel",
+        "recording_url": "",
+        "start_time": "2025-10-02 20:00:00",
+        "end_time": "2025-10-02 20:03:00",
+        "duration": 180,
+        "language": {
+          "welcome": "english",
+          "conversational": "hindi"
+        },
+        "dealer_routing": {
+          "status": true,
+          "reason": "All data collected - routing to dealer",
+          "time": "2025-10-02 20:03:00"
+        },
+        "dropoff": {
+          "time": "",
+          "action": ""
+        },
+        "response_data": [
+          {
+            "key_label": "What's your name",
+            "key_value": "name",
+            "key_response": "Vikram Singh",
+            "attempts": 2,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 20:00:30",
+                "end_time": "2025-10-02 20:00:40",
+                "sequence": 1
+              },
+              {
+                "start_time": "2025-10-02 20:00:50",
+                "end_time": "2025-10-02 20:01:00",
+                "sequence": 2
+              }
+            ],
+            "remarks": "verified"
+          },
+          {
+            "key_label": "Which model you are looking for",
+            "key_value": "model",
+            "key_response": "BMW X5",
+            "attempts": 1,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 20:01:30",
+                "end_time": "2025-10-02 20:01:35",
+                "sequence": 1
+              }
+            ],
+            "remarks": "verified"
+          },
+          {
+            "key_label": "What is your email id",
+            "key_value": "email",
+            "key_response": "vikram.singh@company.com",
+            "attempts": 2,
+            "attempts_details": [
+              {
+                "start_time": "2025-10-02 20:02:00",
+                "end_time": "2025-10-02 20:02:30",
+                "sequence": 1
+              },
+              {
+                "start_time": "2025-10-02 20:02:35",
+                "end_time": "2025-10-02 20:02:55",
+                "sequence": 2
+              }
+            ],
+            "remarks": "verified"
+          }
+        ]
+      },
+      "analysis": {
+        "outcome": "SUCCESS",
+        "data_collected": "3/3",
+        "total_attempts": 5,
+        "avg_attempts_per_field": 1.67,
+        "call_quality": "GOOD",
+        "language_note": "Customer comfortable in both Hindi and English - premium segment lead",
+        "action_required": "Route to dealer (premium vehicle inquiry - high value lead)"
+      }
+    }
+  },
+
+  "field_definitions": {
+    "id": {
+      "type": "string",
+      "format": "bot_{call_ref_id}",
+      "description": "Unique bot call identifier"
+    },
+    "call_ref_id": {
+      "type": "string",
+      "description": "Original telephony vendor call reference ID"
+    },
+    "call_vendor": {
+      "type": "string",
+      "enum": ["Ozonetel", "Waybeo"],
+      "description": "Telephony service provider"
+    },
+    "recording_url": {
+      "type": "string",
+      "description": "URL to call recording (empty if not available)"
+    },
+    "start_time": {
+      "type": "string",
+      "format": "YYYY-MM-DD HH:mm:ss",
+      "description": "Call start timestamp (no milliseconds)"
+    },
+    "end_time": {
+      "type": "string",
+      "format": "YYYY-MM-DD HH:mm:ss",
+      "description": "Call end timestamp (no milliseconds)"
+    },
+    "duration": {
+      "type": "integer",
+      "unit": "seconds",
+      "description": "Total call duration in seconds"
+    },
+    "language.welcome": {
+      "type": "string",
+      "default": "english",
+      "description": "Language used for initial greeting (always English)"
+    },
+    "language.conversational": {
+      "type": "string",
+      "enum": ["english", "hindi", "tamil", "telugu", "kannada", "gujarati", "punjabi"],
+      "description": "Detected language from customer responses"
+    },
+    "dealer_routing.status": {
+      "type": "boolean",
+      "description": "Whether to route call to human dealer"
+    },
+    "dealer_routing.reason": {
+      "type": "string",
+      "possible_values": [
+        "All data collected - routing to dealer",
+        "Customer requested to speak with dealer",
+        "Unable to understand customer responses",
+        "Partial data collected - call ended",
+        "No data collected - call failed"
+      ],
+      "description": "Human-readable reason for routing decision"
+    },
+    "dealer_routing.time": {
+      "type": "string",
+      "format": "YYYY-MM-DD HH:mm:ss",
+      "description": "When routing decision was made (empty if not routing)"
+    },
+    "dropoff.time": {
+      "type": "string",
+      "format": "YYYY-MM-DD HH:mm:ss",
+      "description": "When customer dropped off (empty if completed successfully)"
+    },
+    "dropoff.action": {
+      "type": "string",
+      "enum": ["", "ivr", "name", "model", "email"],
+      "description": "At what stage customer dropped off (empty if completed)"
+    },
+    "response_data[].key_label": {
+      "type": "string",
+      "possible_values": [
+        "What's your name",
+        "Which model you are looking for",
+        "What is your email id"
+      ],
+      "description": "Question asked to customer"
+    },
+    "response_data[].key_value": {
+      "type": "string",
+      "enum": ["name", "model", "email"],
+      "description": "Short identifier for data type"
+    },
+    "response_data[].key_response": {
+      "type": "string",
+      "description": "Customer's actual response (empty string if not provided)"
+    },
+    "response_data[].attempts": {
+      "type": "integer",
+      "min": 0,
+      "description": "Number of times this question was asked"
+    },
+    "response_data[].attempts_details": {
+      "type": "array",
+      "description": "Timing details for each attempt"
+    },
+    "response_data[].attempts_details[].start_time": {
+      "type": "string",
+      "format": "YYYY-MM-DD HH:mm:ss",
+      "description": "When question was asked"
+    },
+    "response_data[].attempts_details[].end_time": {
+      "type": "string",
+      "format": "YYYY-MM-DD HH:mm:ss",
+      "description": "When customer finished responding"
+    },
+    "response_data[].attempts_details[].sequence": {
+      "type": "integer",
+      "description": "Attempt number (1, 2, 3...)"
+    },
+    "response_data[].remarks": {
+      "type": "string",
+      "enum": ["verified", "not_available", "not_attempted"],
+      "description": "Status of this data point"
+    }
+  },
+
+  "testing": {
+    "health_check": {
+      "method": "GET",
+      "url": "https://singleinterfacews.pragyaa.ai/api/webhooks/singleinterface",
+      "expected_response": {
+        "status": "healthy",
+        "endpoint": "Single Interface Webhook",
+        "timestamp": "2025-10-02T14:30:00.000Z"
+      }
+    },
+    "test_post": {
+      "method": "POST",
+      "url": "https://singleinterfacews.pragyaa.ai/api/webhooks/singleinterface",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "sample_body": {
+        "id": "bot_test123",
+        "call_ref_id": "test123",
+        "call_vendor": "Ozonetel",
+        "start_time": "2025-10-02 14:00:00",
+        "end_time": "2025-10-02 14:05:00"
+      },
+      "expected_response": {
+        "success": true,
+        "message": "Single Interface webhook processed successfully",
+        "call_ref_id": "test123",
+        "timestamp": "2025-10-02T14:30:00.000Z"
+      }
+    }
+  }
+}
+

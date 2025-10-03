@@ -1,0 +1,178 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import DashboardCard from '@/app/components/admin/DashboardCard';
+import CallsChart from '@/app/components/admin/CallsChart';
+import RecentCallsTable from '@/app/components/admin/RecentCallsTable';
+import SystemHealthIndicator from '@/app/components/admin/SystemHealthIndicator';
+
+interface DashboardStats {
+  totalCalls: number;
+  todaysCalls: number;
+  successRate: number;
+  averageDuration: number;
+  activeModel: string;
+  systemHealth: 'healthy' | 'warning' | 'error';
+}
+
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<DashboardStats>({
+    totalCalls: 127,
+    todaysCalls: 8,
+    successRate: 73,
+    averageDuration: 95000,
+    activeModel: 'VoiceAgent Full',
+    systemHealth: 'healthy'
+  });
+  
+  const [loading, setLoading] = useState(false); // Start with false to show data immediately
+
+  useEffect(() => {
+    fetchDashboardStats();
+    
+    // Fallback timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      console.log('Timeout reached, setting loading to false');
+      setLoading(false);
+    }, 10000); // 10 second timeout
+    
+    return () => clearTimeout(timeout);
+  }, []);
+
+  const fetchDashboardStats = async () => {
+    try {
+      console.log('Fetching dashboard stats...');
+      const response = await fetch('/api/admin/dashboard');
+      console.log('Response status:', response.status);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Dashboard data:', data);
+        setStats(data);
+      } else {
+        console.error('Response not ok:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error);
+    } finally {
+      console.log('Setting loading to false');
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
+            <p className="text-gray-600">Loading dashboard data...</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
+          <p className="text-gray-600">Monitor your voice agent system performance</p>
+        </div>
+        <SystemHealthIndicator status={stats.systemHealth} />
+      </div>
+
+      {/* Key Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <DashboardCard
+          title="Today's Calls"
+          value={stats.todaysCalls.toString()}
+          subtitle="Active conversations"
+          trend="+12%"
+          trendDirection="up"
+          icon="phone"
+        />
+        <DashboardCard
+          title="Success Rate"
+          value={`${stats.successRate}%`}
+          subtitle="Complete data capture"
+          trend="+5.2%"
+          trendDirection="up"
+          icon="check-circle"
+        />
+        <DashboardCard
+          title="Avg Duration"
+          value={`${Math.round(stats.averageDuration / 1000)}s`}
+          subtitle="Per conversation"
+          trend="-8s"
+          trendDirection="down"
+          icon="clock"
+        />
+        <DashboardCard
+          title="Active Model"
+          value={stats.activeModel}
+          subtitle="Current AI model"
+          trend="Stable"
+          trendDirection="neutral"
+          icon="cpu"
+        />
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Calls Chart */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Call Volume (Last 7 Days)</h3>
+          <CallsChart />
+        </div>
+
+        {/* System Status */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">System Status</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Telephony Service</span>
+              <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                Online
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Queue Processor</span>
+              <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                Processing
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Webhook Service</span>
+              <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                Active
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">OpenAI API</span>
+              <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                Connected
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Calls Table */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Recent Calls</h3>
+          <p className="text-sm text-gray-600">Latest voice agent interactions</p>
+        </div>
+        <RecentCallsTable />
+      </div>
+    </div>
+  );
+}

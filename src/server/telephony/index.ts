@@ -591,12 +591,40 @@ function checkDataCompletion(session: Session) {
   }
 }
 
+// 🆕 v4.5.0: Dynamic model selection based on UI configuration
+function getSelectedModel(): string {
+  try {
+    const configPath = path.join(process.cwd(), 'data', 'model-config.json');
+    
+    if (fs.existsSync(configPath)) {
+      const configData = fs.readFileSync(configPath, 'utf-8');
+      const config = JSON.parse(configData);
+      const selectedModel = config.selectedModel || 'full';
+      const modelInfo = config.models[selectedModel];
+      
+      if (modelInfo && modelInfo.model) {
+        return modelInfo.model;
+      }
+    }
+  } catch (error) {
+    console.error('⚠️  Error reading model config, using default:', error);
+  }
+  
+  // Default to full model if config not found or error
+  return 'gpt-4o-realtime-preview-2024-12-17';
+}
+
 async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
   const apiKey = process.env.OPENAI_API_KEY as string;
   if (!apiKey) throw new Error('OPENAI_API_KEY not set');
 
+  // 🆕 v4.5.0: Read model selection from UI configuration
+  const model = getSelectedModel();
+  const modelName = model.includes('mini') ? 'VoiceAgent Mini' : 'VoiceAgent Full';
+  console.log(`[${ucid}] 🤖 Using model: ${modelName} (${model})`);
+
   return new Promise((resolve, reject) => {
-    const openaiWs = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-realtime', {
+    const openaiWs = new WebSocket(`wss://api.openai.com/v1/realtime?model=${model}`, {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'OpenAI-Beta': 'realtime=v1'
@@ -604,7 +632,7 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
     });
 
     openaiWs.on('open', () => {
-      console.log(`[${ucid}] Connected to OpenAI Realtime API`);
+      console.log(`[${ucid}] Connected to OpenAI Realtime API with ${modelName}`);
       
       // Configure session for Spotlight agent behavior with SDK tools
       const sessionConfig = {
