@@ -122,9 +122,9 @@ async function getRecentCalls(limit: number): Promise<CallRecord[]> {
       date_time: call.timestamp,
       duration: Math.round((call.callAnalytics?.callDuration || 0) / 1000),
       status: call.salesData.status.toLowerCase() as any,
-      customer_name: call.salesData.full_name,
-      car_model: call.salesData.car_model,
-      email: call.salesData.email_id,
+      customer_name: call.salesData.full_name || undefined,
+      car_model: call.salesData.car_model || undefined,
+      email: call.salesData.email_id || undefined,
       model_used: 'VoiceAgent Full' as any
     }));
   }
