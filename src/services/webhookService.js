@@ -409,8 +409,9 @@ class WebhookService {
     const detectedLanguage = Object.entries(languageScores)
       .reduce((a, b) => languageScores[a[0]] > languageScores[b[0]] ? a : b)[0];
 
-    // Return detected language if score > 0, otherwise default to Hindi
-    return languageScores[detectedLanguage] > 0 ? detectedLanguage : "hindi";
+    // Return detected language if score > 0, otherwise default to English
+    // (If no regional language patterns found, conversation is likely in English)
+    return languageScores[detectedLanguage] > 0 ? detectedLanguage : "english";
   }
 
   /**
