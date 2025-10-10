@@ -526,7 +526,7 @@ class WebhookService {
     }
     
     return {
-      call_id: callId,
+      callId: callId,  // Changed from call_id to callId (camelCase) per Waybeo API
       command: "data_record",
       parameters: [
         {

@@ -27,7 +27,7 @@ Authorization: Bearer <JWT_TOKEN>
 ### **Payload Format:**
 ```json
 {
-  "call_id": "74lJ3xiezGf4zOo-DJXGZ",
+  "callId": "74lJ3xiezGf4zOo-DJXGZ",
   "command": "data_record",
   "parameters": [
     {
@@ -177,7 +177,7 @@ curl --location 'https://pbx-uat.waybeo.com/bot-call' \
   --header 'Content-Type: application/json' \
   --header 'Authorization: Bearer YOUR_TOKEN_HERE' \
   --data '{
-    "call_id": "test-123",
+    "callId": "test-123",
     "command": "data_record",
     "parameters": [
       {
@@ -379,7 +379,7 @@ All 3 data points captured:
 
 ```json
 {
-  "call_id": "18882175837982271",
+  "callId": "18882175837982271",
   "command": "data_record",
   "parameters": [
     {
@@ -400,7 +400,7 @@ Only some data captured:
 
 ```json
 {
-  "call_id": "18882175837982272",
+  "callId": "18882175837982272",
   "command": "data_record",
   "parameters": [
     {
@@ -421,7 +421,7 @@ No data captured or early dropoff:
 
 ```json
 {
-  "call_id": "18882175837982273",
+  "callId": "18882175837982273",
   "command": "data_record",
   "parameters": [
     {
