@@ -561,6 +561,13 @@ class WebhookService {
     // Transform to Waybeo format
     const payload = this.transformToWaybeoFormat(callId, resultData, transcriptData);
 
+    // 🔍 DEBUG: Log the complete Waybeo payload
+    console.log(`[${callId}] ═══════════════════════════════════════════════════`);
+    console.log(`[${callId}] 🔍 WAYBEO WEBHOOK PAYLOAD (Complete):`);
+    console.log(`[${callId}] ═══════════════════════════════════════════════════`);
+    console.log(JSON.stringify(payload, null, 2));
+    console.log(`[${callId}] ═══════════════════════════════════════════════════`);
+
     try {
       const response = await this.makeWaybeoWebhookRequest(waybeoEndpoint, payload, waybeoToken);
       console.log(`[${callId}] 📞 Waybeo webhook delivered successfully:`, response.status);
@@ -581,12 +588,19 @@ class WebhookService {
 
     const payload = this.transformToSingleInterfaceFormat(callId, resultData, transcriptData);
 
+    // 🔍 DEBUG: Log the complete SingleInterface payload
+    console.log(`[${callId}] ═══════════════════════════════════════════════════`);
+    console.log(`[${callId}] 🔍 SINGLEINTERFACE WEBHOOK PAYLOAD (Complete):`);
+    console.log(`[${callId}] ═══════════════════════════════════════════════════`);
+    console.log(JSON.stringify(payload, null, 2));
+    console.log(`[${callId}] ═══════════════════════════════════════════════════`);
+
     try {
       const response = await this.makeWebhookRequest(`${this.baseUrl}/api/webhooks/singleinterface`, payload);
       console.log(`[${callId}] 🎯 Single Interface webhook delivered successfully:`, response.status);
       
       // Log summary of delivered data
-      console.log(`[${callId}] 📊 Delivered: ${payload.response_data.length} data points, duration: ${payload.duration}s`);
+      console.log(`[${callId}] 📊 Delivered: ${payload.response_data.length} data points, duration: ${payload.Duration}s`);
     } catch (error) {
       console.error(`[${callId}] ❌ Single Interface webhook failed:`, error.message);
     }
