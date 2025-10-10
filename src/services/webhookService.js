@@ -33,6 +33,10 @@ class WebhookService {
     
     const duration = Math.round((transcriptData?.call_duration || 0) / 1000); // Convert to seconds
     
+    // Extract Store_code and Customer_number from session data
+    const storeCode = this.extractStoreCode(transcriptData);
+    const customerNumber = this.extractCustomerNumber(transcriptData);
+    
     // Determine dealer routing status and reason
     const routingInfo = this.determineDealerRouting(resultData, transcriptData);
 
@@ -45,11 +49,13 @@ class WebhookService {
     return {
       id: `bot_${callId}`,
       call_ref_id: callId,
-      call_vendor: "Ozonetel", // Current testing vendor (will change to "Waybeo" in production)
+      call_vendor: "Waybeo", // Updated to Waybeo as per new requirements
       recording_url: "", // No recording available currently
       start_time: startTime,
       end_time: endTime,
-      duration: duration,
+      Duration: duration, // Capital D as per new format
+      Store_code: storeCode, // NEW: Store identifier
+      Customer_number: customerNumber, // NEW: Customer phone number
       language: {
         welcome: "english", // Always starts in English
         conversational: this.detectConversationalLanguage(transcriptData)
@@ -80,6 +86,43 @@ class WebhookService {
   }
 
   /**
+   * Extract Store_code from transcript data
+   * Store code should be passed from telephony vendor in session metadata
+   */
+  extractStoreCode(transcriptData) {
+    // Try to extract from multiple possible locations
+    const storeCode = 
+      transcriptData?.store_code || 
+      transcriptData?.Store_code ||
+      transcriptData?.metadata?.store_code ||
+      transcriptData?.metadata?.Store_code ||
+      10001; // Default store code if not provided
+    
+    return parseInt(storeCode);
+  }
+
+  /**
+   * Extract Customer_number from transcript data
+   * Customer number should be the DID (dialed number) or caller ID from telephony vendor
+   */
+  extractCustomerNumber(transcriptData) {
+    // Try to extract from multiple possible locations
+    const customerNumber = 
+      transcriptData?.customer_number ||
+      transcriptData?.Customer_number ||
+      transcriptData?.caller_id ||
+      transcriptData?.did ||
+      transcriptData?.phone_number ||
+      transcriptData?.metadata?.customer_number ||
+      transcriptData?.metadata?.did ||
+      9999999999; // Default/placeholder if not provided
+    
+    // Ensure it's a number (remove any non-digit characters)
+    const cleaned = String(customerNumber).replace(/\D/g, '');
+    return parseInt(cleaned) || 9999999999;
+  }
+
+  /**
    * Determine dealer routing status and reason
    */
   determineDealerRouting(resultData, transcriptData) {
@@ -101,18 +144,18 @@ class WebhookService {
     if (customerRequestedDealer.requested) {
       // Customer specifically asked to talk to dealer
       status = true;
-      reason = "Customer requested to speak with dealer";
+      reason = "User decided";
       time = customerRequestedDealer.timestamp;
     } else if (overallStatus === 'complete') {
       // All data collected successfully - route to dealer
       status = true;
-      reason = "All data collected - routing to dealer";
+      reason = "call completed";
       time = transcriptData?.end_time ? 
         this.formatTimestamp(transcriptData.end_time) : "";
     } else if (hadUnderstandingIssues.hadIssues) {
       // Unable to understand customer responses
       status = true;
-      reason = "Unable to understand customer responses";
+      reason = "Unable to understand answers";
       time = hadUnderstandingIssues.timestamp;
     } else if (overallStatus === 'partial') {
       // Some data collected but incomplete
@@ -208,10 +251,15 @@ class WebhookService {
     }
 
     // Map internal dropoff events to Single Interface actions
+    // Supports: ivr, name, model, email, qq1, qq2 (qualifying questions)
     const actionMap = {
       'name_request': 'name',
       'model_request': 'model', 
       'email_request': 'email',
+      'qualifying_question_1': 'qq1',
+      'qualifying_question_2': 'qq2',
+      'qq1': 'qq1',
+      'qq2': 'qq2',
       'greeting': 'ivr',
       'initial_greeting': 'ivr',
       'welcome': 'ivr'
@@ -263,6 +311,10 @@ class WebhookService {
           dropoffAction = "model";
         } else if (questionText.includes('email') || questionText.includes('mail')) {
           dropoffAction = "email";
+        } else if (questionText.includes('qualifying') || questionText.includes('qq1')) {
+          dropoffAction = "qq1";
+        } else if (questionText.includes('qq2')) {
+          dropoffAction = "qq2";
         } else {
           dropoffAction = "ivr";
         }

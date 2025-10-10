@@ -4,13 +4,14 @@ import { NextRequest, NextResponse } from 'next/server';
  * Single Interface Webhook Endpoint  
  * URL: https://singleinterfacews.pragyaa.ai/api/webhooks/singleinterface
  * 
- * Complete webhook matching Single Interface API requirements:
+ * Complete webhook matching Single Interface API requirements v2:
  * - Bot ID and call reference
  * - Call vendor and recording details
- * - Timing and duration information
+ * - Timing and duration information (Duration with capital D)
+ * - Store code and customer number (NEW)
  * - Language configuration
- * - Dealer routing status
- * - Dropoff analysis
+ * - Dealer routing status (updated reasons)
+ * - Dropoff analysis (supports qq1/qq2)
  * - Detailed response data with attempts
  */
 
@@ -22,7 +23,9 @@ export async function POST(req: NextRequest) {
       id: body.id,
       call_ref_id: body.call_ref_id,
       call_vendor: body.call_vendor,
-      duration: body.duration,
+      Duration: body.Duration,
+      Store_code: body.Store_code,
+      Customer_number: body.Customer_number,
       dealer_routing_status: body.dealer_routing?.status,
       response_data_count: body.response_data?.length || 0
     });
@@ -92,11 +95,17 @@ export async function GET() {
   return NextResponse.json({
     status: 'healthy',
     endpoint: 'singleinterface-webhook',
-    api_version: '1.0',
+    api_version: '2.0',
     supported_fields: [
       'id', 'call_ref_id', 'call_vendor', 'recording_url',
-      'start_time', 'end_time', 'duration', 'language',
-      'dealer_routing', 'dropoff', 'response_data'
+      'start_time', 'end_time', 'Duration', 'Store_code', 'Customer_number',
+      'language', 'dealer_routing', 'dropoff', 'response_data'
+    ],
+    dealer_routing_reasons: [
+      'Unable to understand answers', 'User decided', 'call completed'
+    ],
+    dropoff_actions: [
+      'ivr', 'name', 'model', 'email', 'qq1', 'qq2'
     ],
     timestamp: new Date().toISOString()
   });
