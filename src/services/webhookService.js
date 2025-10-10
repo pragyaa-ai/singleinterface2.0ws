@@ -511,60 +511,32 @@ class WebhookService {
 
   /**
    * Transform data to Waybeo telephony format
+   * Only sends: bot_reference_id, call_id, and data_capture_status
    */
   transformToWaybeoFormat(callId, resultData, transcriptData) {
-    const parameters = [];
-    const dataPoints = resultData.extracted_data?.data_points || {};
+    // Map internal status to telephony vendor status
+    const overallStatus = resultData.extracted_data?.overall_status || 'incomplete';
+    let dataCaptureStatus = 'none';
     
-    // Add captured data points as parameters
-    if (dataPoints.full_name?.value) {
-      parameters.push({
-        key: "customer_name",
-        value: dataPoints.full_name.value
-      });
-    }
-    
-    if (dataPoints.car_model?.value) {
-      parameters.push({
-        key: "car_model",
-        value: dataPoints.car_model.value
-      });
-    }
-    
-    if (dataPoints.email_id?.value) {
-      parameters.push({
-        key: "customer_email",
-        value: dataPoints.email_id.value
-      });
-    }
-    
-    // Add call status
-    parameters.push({
-      key: "call_status",
-      value: resultData.extracted_data?.overall_status || 'incomplete'
-    });
-    
-    // Add call duration if available
-    if (transcriptData?.call_duration) {
-      parameters.push({
-        key: "call_duration_seconds",
-        value: String(Math.round(transcriptData.call_duration / 1000))
-      });
-    }
-    
-    // Add language if available
-    if (transcriptData?.conversation && transcriptData.conversation.length > 0) {
-      const conversationalLanguage = this.detectConversationalLanguage(transcriptData);
-      parameters.push({
-        key: "conversation_language",
-        value: conversationalLanguage
-      });
+    if (overallStatus === 'complete') {
+      dataCaptureStatus = 'complete';
+    } else if (overallStatus === 'partial') {
+      dataCaptureStatus = 'partial';
     }
     
     return {
       call_id: callId,
       command: "data_record",
-      parameters: parameters
+      parameters: [
+        {
+          key: "bot_reference_id",
+          value: `bot_${callId}`
+        },
+        {
+          key: "data_capture_status",
+          value: dataCaptureStatus
+        }
+      ]
     };
   }
 
@@ -592,7 +564,7 @@ class WebhookService {
     try {
       const response = await this.makeWaybeoWebhookRequest(waybeoEndpoint, payload, waybeoToken);
       console.log(`[${callId}] 📞 Waybeo webhook delivered successfully:`, response.status);
-      console.log(`[${callId}] 📊 Sent ${payload.parameters.length} parameters to Waybeo`);
+      console.log(`[${callId}] 📊 Data capture status sent: ${payload.parameters.find(p => p.key === 'data_capture_status')?.value}`);
     } catch (error) {
       console.error(`[${callId}] ❌ Waybeo webhook failed:`, error.message);
     }

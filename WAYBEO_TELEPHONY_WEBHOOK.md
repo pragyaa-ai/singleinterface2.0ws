@@ -8,7 +8,7 @@
 
 ## 🎯 Overview
 
-After each call is processed, the system automatically sends call data to Waybeo's bot-call endpoint in their required format. This enables Waybeo to receive structured data about customer interactions captured during the call.
+After each call is processed, the system automatically sends minimal call status information to Waybeo's bot-call endpoint. This notifies Waybeo about the call completion and data capture outcome **without sending any customer data**.
 
 ---
 
@@ -27,62 +27,41 @@ Authorization: Bearer <JWT_TOKEN>
 ### **Payload Format:**
 ```json
 {
-  "call_id": "84a7e94f-5b6c-4d8e-9c0a-3a7f8e9b0c1d",
+  "call_id": "74lJ3xiezGf4zOo-DJXGZ",
   "command": "data_record",
   "parameters": [
     {
-      "key": "customer_name",
-      "value": "Vipin Kumar"
+      "key": "bot_reference_id",
+      "value": "bot_74lJ3xiezGf4zOo-DJXGZ"
     },
     {
-      "key": "car_model",
-      "value": "Sonet"
-    },
-    {
-      "key": "customer_email",
-      "value": "vipin@example.com"
-    },
-    {
-      "key": "call_status",
+      "key": "data_capture_status",
       "value": "complete"
-    },
-    {
-      "key": "call_duration_seconds",
-      "value": "120"
-    },
-    {
-      "key": "conversation_language",
-      "value": "hindi"
     }
   ]
 }
 ```
 
+**That's it! Only 2 parameters are sent - no customer data.**
+
 ---
 
 ## 📊 Parameters Sent to Waybeo
 
-### **Always Included:**
+### **Parameters (Always 2):**
 
 | Key | Description | Example Value | Source |
 |-----|-------------|---------------|--------|
-| `call_status` | Overall call completion status | `"complete"`, `"partial"`, `"incomplete"` | System determined |
+| `bot_reference_id` | Bot identifier with call ID | `"bot_74lJ3xiezGf4zOo-DJXGZ"` | System generated (bot_ + call_id) |
+| `data_capture_status` | Data capture outcome | `"complete"`, `"partial"`, `"none"` | System determined |
 
-### **Conditionally Included** (if captured):
+### **Possible data_capture_status Values:**
 
-| Key | Description | Example Value | Source |
-|-----|-------------|---------------|--------|
-| `customer_name` | Customer's full name | `"Vipin Kumar"` | Voice agent capture |
-| `car_model` | Car model interested in | `"Sonet"`, `"Scorpio"` | Voice agent capture |
-| `customer_email` | Customer's email address | `"vipin@example.com"` | Voice agent capture |
-| `call_duration_seconds` | Call duration in seconds | `"120"` | System measured |
-| `conversation_language` | Detected conversation language | `"hindi"`, `"tamil"`, `"english"` | System detected |
+- `"complete"` - All 3 data points captured successfully (name, car model, email)
+- `"partial"` - Some data points captured but not all
+- `"none"` - No data captured or call failed early
 
-### **Possible call_status Values:**
-
-- `"complete"` - All 3 data points captured successfully
-- `"partial"` - Some data points captured
-- `"incomplete"` - No data or call failed
+**Note:** Customer data (name, car model, email, etc.) is **NOT** sent to the telephony webhook. All customer data is only sent to the SingleInterface webhook.
 
 ---
 
@@ -202,11 +181,11 @@ curl --location 'https://pbx-uat.waybeo.com/bot-call' \
     "command": "data_record",
     "parameters": [
       {
-        "key": "customer_name",
-        "value": "Test Customer"
+        "key": "bot_reference_id",
+        "value": "bot_test-123"
       },
       {
-        "key": "call_status",
+        "key": "data_capture_status",
         "value": "complete"
       }
     ]
@@ -223,7 +202,7 @@ pm2 logs voiceagent-queue-processor --lines 100 | grep -A 5 "Waybeo"
 
 # Expected log output:
 # [CALL_ID] 📞 Waybeo webhook delivered successfully: 200
-# [CALL_ID] 📊 Sent 6 parameters to Waybeo
+# [CALL_ID] 📊 Data capture status sent: complete
 ```
 
 ### **3. Verify Data Received:**
@@ -286,7 +265,7 @@ pm2 logs voiceagent-queue-processor --lines 50
 # Look for these patterns:
 # 🚀 Processing webhooks...
 # 📞 Waybeo webhook delivered successfully: 200
-# 📊 Sent 6 parameters to Waybeo
+# 📊 Data capture status sent: complete
 # 📡 Webhook summary: 2 delivered, 0 failed
 
 # Check for errors:
@@ -404,28 +383,12 @@ All 3 data points captured:
   "command": "data_record",
   "parameters": [
     {
-      "key": "customer_name",
-      "value": "Vipin Kumar"
+      "key": "bot_reference_id",
+      "value": "bot_18882175837982271"
     },
     {
-      "key": "car_model",
-      "value": "Sonet"
-    },
-    {
-      "key": "customer_email",
-      "value": "vipin@example.com"
-    },
-    {
-      "key": "call_status",
+      "key": "data_capture_status",
       "value": "complete"
-    },
-    {
-      "key": "call_duration_seconds",
-      "value": "180"
-    },
-    {
-      "key": "conversation_language",
-      "value": "hindi"
     }
   ]
 }
@@ -433,7 +396,7 @@ All 3 data points captured:
 
 ### **Example 2: Partial Call**
 
-Only name and model captured:
+Only some data captured:
 
 ```json
 {
@@ -441,32 +404,20 @@ Only name and model captured:
   "command": "data_record",
   "parameters": [
     {
-      "key": "customer_name",
-      "value": "Rajesh Singh"
+      "key": "bot_reference_id",
+      "value": "bot_18882175837982272"
     },
     {
-      "key": "car_model",
-      "value": "Scorpio"
-    },
-    {
-      "key": "call_status",
+      "key": "data_capture_status",
       "value": "partial"
-    },
-    {
-      "key": "call_duration_seconds",
-      "value": "95"
-    },
-    {
-      "key": "conversation_language",
-      "value": "english"
     }
   ]
 }
 ```
 
-### **Example 3: Incomplete Call**
+### **Example 3: Failed Call**
 
-Early dropoff, minimal data:
+No data captured or early dropoff:
 
 ```json
 {
@@ -474,16 +425,12 @@ Early dropoff, minimal data:
   "command": "data_record",
   "parameters": [
     {
-      "key": "call_status",
-      "value": "incomplete"
+      "key": "bot_reference_id",
+      "value": "bot_18882175837982273"
     },
     {
-      "key": "call_duration_seconds",
-      "value": "15"
-    },
-    {
-      "key": "conversation_language",
-      "value": "hindi"
+      "key": "data_capture_status",
+      "value": "none"
     }
   ]
 }
@@ -495,12 +442,13 @@ Early dropoff, minimal data:
 
 ### **Information to Share with Waybeo:**
 
-1. **Webhook Endpoint**: They don't need to call us - we call them
-2. **Expected Parameters**: Share the parameter keys we send (see table above)
-3. **Authentication**: Confirm we're using their Bearer token correctly
-4. **Payload Format**: Share example payloads (see above)
-5. **Error Handling**: How they want us to handle failures
-6. **Retry Logic**: We retry 3 times with exponential backoff
+1. **Webhook Endpoint**: They don't need to call us - we call them at their bot-call endpoint
+2. **Minimal Data**: We only send call_id, bot_reference_id, and data_capture_status
+3. **No Customer Data**: Customer information (name, email, etc.) is NOT sent to telephony webhook
+4. **Parameters**: Only 2 parameters sent (bot_reference_id, data_capture_status)
+5. **Authentication**: Using their Bearer token in Authorization header
+6. **Payload Format**: Share example payloads (see above)
+7. **Retry Logic**: We retry 3 times with exponential backoff on failure
 
 ### **Information to Get from Waybeo:**
 
@@ -531,12 +479,18 @@ Early dropoff, minimal data:
 
 **What's Sent:**
 
-- Customer name (if captured)
-- Car model (if captured)
-- Customer email (if captured)
-- Call status (always)
-- Call duration (if available)
-- Conversation language (if detected)
+- Bot reference ID (always) - Format: `bot_{call_id}`
+- Data capture status (always) - Values: `none`, `partial`, `complete`
+
+**What's NOT Sent:**
+
+- Customer name, email, phone number
+- Car model or other collected data
+- Call duration or timing details
+- Conversation language
+- Any personally identifiable information (PII)
+
+**All customer data is only sent to SingleInterface webhook, not to telephony webhook.**
 
 **Next Steps:**
 

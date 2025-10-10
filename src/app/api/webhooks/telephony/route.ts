@@ -4,21 +4,22 @@ import { NextRequest, NextResponse } from 'next/server';
  * Telephony Vendor Webhook Endpoint (Waybeo Integration)
  * URL: https://singleinterfacews.pragyaa.ai/api/webhooks/telephony
  * 
- * Delivers call data to Waybeo's bot-call endpoint in their required format:
+ * Delivers minimal call status to Waybeo's bot-call endpoint:
  * 
  * Waybeo Endpoint: https://pbx-uat.waybeo.com/bot-call
  * Format: {
- *   "call_id": "...",
+ *   "call_id": "74lJ3xiezGf4zOo-DJXGZ",
  *   "command": "data_record",
  *   "parameters": [
- *     {"key": "customer_name", "value": "..."},
- *     {"key": "car_model", "value": "..."},
- *     {"key": "customer_email", "value": "..."},
- *     {"key": "call_status", "value": "complete"},
- *     {"key": "call_duration_seconds", "value": "120"},
- *     {"key": "conversation_language", "value": "hindi"}
+ *     {"key": "bot_reference_id", "value": "bot_74lJ3xiezGf4zOo-DJXGZ"},
+ *     {"key": "data_capture_status", "value": "complete"}
  *   ]
  * }
+ * 
+ * Data capture status values:
+ * - "none" - No data captured or call failed
+ * - "partial" - Some data captured but not all
+ * - "complete" - All data points captured successfully
  * 
  * Requires environment variables:
  * - WAYBEO_WEBHOOK_URL (default: https://pbx-uat.waybeo.com/bot-call)
