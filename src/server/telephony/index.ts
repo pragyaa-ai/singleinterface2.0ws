@@ -794,8 +794,16 @@ async function handleConnection(ws: WebSocket) {
       // From here, msg is OzonetelMediaPacket
       if (msg.event === 'start') {
         ucid = msg.ucid || '';
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`[${ucid}] 🎬 START EVENT RECEIVED from telephony vendor`);
+        console.log(`[${ucid}] 📞 Call ID (UCID): ${ucid}`);
+        console.log(`[${ucid}] 📋 Full message:`, JSON.stringify(msg, null, 2));
+        console.log(`${'='.repeat(80)}\n`);
+        
         try {
+          console.log(`[${ucid}] 🔌 Initializing OpenAI connection...`);
           const openaiWs = await createOpenAIConnection(ucid);
+          console.log(`[${ucid}] ✅ OpenAI connection established successfully`);
           session = {
             ucid,
             client: ws,
@@ -836,6 +844,8 @@ async function handleConnection(ws: WebSocket) {
             }
           };
           sessions.set(ucid, session);
+          console.log(`[${ucid}] 💾 Session stored in memory (Total active sessions: ${sessions.size})`);
+          console.log(`[${ucid}] 🚀 Voice agent ready - waiting for audio stream...`);
 
           // Handle responses from OpenAI (Spotlight-like behavior)
           openaiWs.on('message', (data) => {
@@ -1071,6 +1081,7 @@ async function handleConnection(ws: WebSocket) {
                   console.log(`[${ucid}] 📋 Rich transcript entries:`, session.fullTranscript.length);
                   
                   // 🔄 DECOUPLED: Real-time processing removed - will be handled by async processor
+                  // Data extraction happens via queue processor after call ends
                   console.log(`[${ucid}] 📤 Transcript collected for async processing`);
                   
                   // 🆕 NEW: Collect analytics using OpenAI timestamps
@@ -1114,7 +1125,10 @@ async function handleConnection(ws: WebSocket) {
           });
 
         } catch (err) {
-          console.error(`[${ucid}] Failed to create OpenAI connection:`, err);
+          console.error(`\n${'='.repeat(80)}`);
+          console.error(`[${ucid}] ❌ START EVENT FAILED - Could not initialize session`);
+          console.error(`[${ucid}] Error details:`, err);
+          console.error(`${'='.repeat(80)}\n`);
         }
         return;
       }
@@ -1125,6 +1139,41 @@ async function handleConnection(ws: WebSocket) {
         // Ignore very first packet (may be 16k per Ozonetel note)
         if (!session.receivedFirstPacket) {
           session.receivedFirstPacket = true;
+          
+          // 🔍 DIAGNOSTIC: Log audio format on first packet
+          console.log(`\n${'='.repeat(80)}`);
+          console.log(`[${ucid}] 🎵 AUDIO FORMAT DIAGNOSTIC (First Packet)`);
+          console.log(`[${ucid}] Sample Rate: ${msg.data.sampleRate} Hz`);
+          console.log(`[${ucid}] Bits Per Sample: ${msg.data.bitsPerSample}`);
+          console.log(`[${ucid}] Channels: ${msg.data.channelCount}`);
+          console.log(`[${ucid}] Number of Samples: ${msg.data.samples?.length || 0}`);
+          console.log(`[${ucid}] Expected: 8000 Hz, 16-bit, Mono, ~80 samples per frame`);
+          
+          // 🔍 DEEPER DIAGNOSTIC: Check actual sample values
+          if (msg.data.samples && msg.data.samples.length > 0) {
+            const samples = msg.data.samples;
+            const first10 = samples.slice(0, 10);
+            const hasNegative = samples.some((s: number) => s < 0);
+            const maxVal = Math.max(...samples.slice(0, 100));
+            const minVal = Math.min(...samples.slice(0, 100));
+            
+            console.log(`[${ucid}] 🔢 Sample Analysis:`);
+            console.log(`[${ucid}]   - First 10 samples: [${first10.join(', ')}]`);
+            console.log(`[${ucid}]   - Has negative values: ${hasNegative ? 'YES (signed ✅)' : 'NO (unsigned ❌)'}`);
+            console.log(`[${ucid}]   - Min value: ${minVal}`);
+            console.log(`[${ucid}]   - Max value: ${maxVal}`);
+            console.log(`[${ucid}]   - Expected range: -32768 to 32767 (signed 16-bit)`);
+            
+            // Check if values are in expected range
+            if (maxVal > 32767 || minVal < -32768) {
+              console.log(`[${ucid}] ⚠️ WARNING: Values outside 16-bit signed range!`);
+            }
+            if (!hasNegative && maxVal > 32767) {
+              console.log(`[${ucid}] ⚠️ WARNING: Appears to be unsigned 16-bit (0-65535)!`);
+            }
+          }
+          console.log(`${'='.repeat(80)}\n`);
+          
           return;
         }
 
@@ -1148,6 +1197,8 @@ async function handleConnection(ws: WebSocket) {
 
       if (msg.event === 'stop') {
         if (session) {
+          console.log(`[${session.ucid}] 🛑 Stop event received from telephony vendor`);
+          
           // 🆕 NEW: Capture call end time and duration
           if (session.callAnalytics) {
             session.callAnalytics.callEndTime = Date.now();
@@ -1155,17 +1206,41 @@ async function handleConnection(ws: WebSocket) {
             console.log(`[${session.ucid}] ⏱️ Total call duration: ${totalDuration}ms (${Math.round(totalDuration/1000)}s)`);
           }
           
-          // Save any partial data collected before call ends
-          const { full_name, car_model, email_id } = session.salesData;
-          if (full_name || car_model || email_id) {
-            console.log(`[${session.ucid}] 📋 Call ended - saving partial data`);
-            saveSalesDataToFile(session);
+          // 🔄 CRITICAL FIX: Save transcript for async processing BEFORE cleanup
+          console.log(`[${session.ucid}] 💾 Saving transcript for async processing...`);
+          const transcriptResult = saveTranscriptForProcessing(session);
+          if (transcriptResult) {
+            console.log(`[${session.ucid}] ✅ Transcript saved: ${transcriptResult.transcriptFile}`);
+            console.log(`[${session.ucid}] 📋 Queue entry created: ${transcriptResult.queueFile}`);
+          } else {
+            console.log(`[${session.ucid}] ⚠️ Failed to save transcript`);
           }
           
-          session.openaiWs.close();
+          // 🔄 NOTE: Real-time sales data is NOT saved from telephony
+          // Data extraction happens via async queue processor using transcript
+          console.log(`[${session.ucid}] 📤 Transcript handed off to queue processor for data extraction`);
+          
+          // Close OpenAI connection first
+          console.log(`[${session.ucid}] 🔌 Closing OpenAI WebSocket connection...`);
+          if (session.openaiWs && session.openaiWs.readyState === WebSocket.OPEN) {
+            session.openaiWs.close();
+          }
+          
+          // Remove session from memory
           sessions.delete(session.ucid);
+          console.log(`[${session.ucid}] 🗑️ Session removed from memory (Active sessions: ${sessions.size})`);
+          
+          // Close client WebSocket connection
+          console.log(`[${session.ucid}] 🔌 Closing telephony vendor WebSocket connection...`);
         }
-        if (ws.readyState === WebSocket.OPEN) ws.close();
+        
+        // Close the WebSocket connection to telephony vendor
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.close();
+          console.log(`[${session?.ucid || 'unknown'}] ✅ Telephony vendor WebSocket closed`);
+        } else {
+          console.log(`[${session?.ucid || 'unknown'}] ⚠️ WebSocket already closed (state: ${ws.readyState})`);
+        }
         return;
       }
     } catch (err) {

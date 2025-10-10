@@ -29,7 +29,24 @@ type TranscriptContextValue = {
   addTranscriptBreadcrumb: (title: string, data?: Record<string, any>) => void;
   toggleTranscriptItemExpand: (itemId: string) => void;
   updateTranscriptItem: (itemId: string, updatedProperties: Partial<TranscriptItem>) => void;
+  // Session management
+  currentSessionId: string;
+  getSessions: () => ChatSession[];
+  loadSession: (sessionId: string) => void;
+  startNewSession: () => void;
+  deleteSession: (sessionId: string) => void;
+  clearAllSessions: () => void;
 };
+
+// Session management types - moved before TranscriptContextValue
+interface ChatSession {
+  id: string;
+  timestamp: number;
+  title: string;
+  items: TranscriptItem[];
+  agentConfig?: string;
+  language?: string;
+}
 
 const TranscriptContext = createContext<TranscriptContextValue | undefined>(undefined);
 
@@ -127,11 +144,115 @@ async function correctTextScript(text: string, targetLanguage: string): Promise<
   return text;
 }
 
+// Session management types
+interface ChatSession {
+  id: string;
+  timestamp: number;
+  title: string;
+  items: TranscriptItem[];
+  agentConfig?: string;
+  language?: string;
+}
+
+const STORAGE_KEY = 'voice_agent_chat_history';
+const CURRENT_SESSION_KEY = 'voice_agent_current_session';
+const MAX_SESSIONS = 50; // Keep last 50 sessions
+
 export const TranscriptProvider: FC<PropsWithChildren> = ({ children }) => {
   const [transcriptItems, setTranscriptItems] = useState<TranscriptItem[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem(CURRENT_SESSION_KEY) || `session_${Date.now()}`;
+  });
   
   // Use language context properly - hooks must be called consistently
   const { preferredLanguage } = useLanguage();
+
+  // Load saved sessions from localStorage
+  const loadSessions = (): ChatSession[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+      console.error('Failed to load chat sessions:', error);
+      return [];
+    }
+  };
+
+  // Save sessions to localStorage
+  const saveSessions = (sessions: ChatSession[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+      // Keep only the most recent sessions
+      const limited = sessions.slice(-MAX_SESSIONS);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(limited));
+    } catch (error) {
+      console.error('Failed to save chat sessions:', error);
+    }
+  };
+
+  // Save current session
+  const saveCurrentSession = () => {
+    if (typeof window === 'undefined' || transcriptItems.length === 0) return;
+    
+    const sessions = loadSessions();
+    const existingIndex = sessions.findIndex(s => s.id === currentSessionId);
+    
+    // Generate title from first user message or use timestamp
+    const firstUserMessage = transcriptItems.find(
+      item => item.type === 'MESSAGE' && item.role === 'user' && item.title
+    );
+    const title = firstUserMessage?.title?.substring(0, 50) || 
+                  `Chat ${new Date().toLocaleString()}`;
+    
+    const session: ChatSession = {
+      id: currentSessionId,
+      timestamp: Date.now(),
+      title,
+      items: transcriptItems,
+      language: preferredLanguage,
+    };
+    
+    if (existingIndex >= 0) {
+      sessions[existingIndex] = session;
+    } else {
+      sessions.push(session);
+    }
+    
+    saveSessions(sessions);
+  };
+
+  // Auto-save session periodically
+  useEffect(() => {
+    if (transcriptItems.length === 0) return;
+    
+    const interval = setInterval(() => {
+      saveCurrentSession();
+    }, 10000); // Save every 10 seconds
+    
+    return () => clearInterval(interval);
+  }, [transcriptItems, currentSessionId, preferredLanguage]);
+
+  // Save session ID to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(CURRENT_SESSION_KEY, currentSessionId);
+    }
+  }, [currentSessionId]);
+
+  // Load previous session on mount if exists
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const sessions = loadSessions();
+    const lastSession = sessions.find(s => s.id === currentSessionId);
+    
+    if (lastSession && lastSession.items.length > 0) {
+      console.log(`Loading previous session: ${currentSessionId}`);
+      setTranscriptItems(lastSession.items);
+    }
+  }, []); // Only run once on mount
 
   function newTimestampPretty(): string {
     const now = new Date();
