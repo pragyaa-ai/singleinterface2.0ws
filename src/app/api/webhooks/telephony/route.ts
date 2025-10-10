@@ -1,14 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Telephony Vendor Webhook Endpoint
+ * Telephony Vendor Webhook Endpoint (Waybeo Integration)
  * URL: https://singleinterfacews.pragyaa.ai/api/webhooks/telephony
  * 
- * Simple webhook for telephony vendors with minimal data:
- * - Call ID
- * - Processing timestamp  
- * - Success status
- * - Overall call status
+ * Delivers call data to Waybeo's bot-call endpoint in their required format:
+ * 
+ * Waybeo Endpoint: https://pbx-uat.waybeo.com/bot-call
+ * Format: {
+ *   "call_id": "...",
+ *   "command": "data_record",
+ *   "parameters": [
+ *     {"key": "customer_name", "value": "..."},
+ *     {"key": "car_model", "value": "..."},
+ *     {"key": "customer_email", "value": "..."},
+ *     {"key": "call_status", "value": "complete"},
+ *     {"key": "call_duration_seconds", "value": "120"},
+ *     {"key": "conversation_language", "value": "hindi"}
+ *   ]
+ * }
+ * 
+ * Requires environment variables:
+ * - WAYBEO_WEBHOOK_URL (default: https://pbx-uat.waybeo.com/bot-call)
+ * - WAYBEO_AUTH_TOKEN (Bearer token for authorization)
  */
 
 export async function POST(req: NextRequest) {

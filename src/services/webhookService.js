@@ -510,26 +510,91 @@ class WebhookService {
   }
 
   /**
-   * Deliver webhook to telephony vendor (simple format)
+   * Transform data to Waybeo telephony format
    */
-  async deliverTelephonyWebhook(callId, resultData) {
+  transformToWaybeoFormat(callId, resultData, transcriptData) {
+    const parameters = [];
+    const dataPoints = resultData.extracted_data?.data_points || {};
+    
+    // Add captured data points as parameters
+    if (dataPoints.full_name?.value) {
+      parameters.push({
+        key: "customer_name",
+        value: dataPoints.full_name.value
+      });
+    }
+    
+    if (dataPoints.car_model?.value) {
+      parameters.push({
+        key: "car_model",
+        value: dataPoints.car_model.value
+      });
+    }
+    
+    if (dataPoints.email_id?.value) {
+      parameters.push({
+        key: "customer_email",
+        value: dataPoints.email_id.value
+      });
+    }
+    
+    // Add call status
+    parameters.push({
+      key: "call_status",
+      value: resultData.extracted_data?.overall_status || 'incomplete'
+    });
+    
+    // Add call duration if available
+    if (transcriptData?.call_duration) {
+      parameters.push({
+        key: "call_duration_seconds",
+        value: String(Math.round(transcriptData.call_duration / 1000))
+      });
+    }
+    
+    // Add language if available
+    if (transcriptData?.conversation && transcriptData.conversation.length > 0) {
+      const conversationalLanguage = this.detectConversationalLanguage(transcriptData);
+      parameters.push({
+        key: "conversation_language",
+        value: conversationalLanguage
+      });
+    }
+    
+    return {
+      call_id: callId,
+      command: "data_record",
+      parameters: parameters
+    };
+  }
+
+  /**
+   * Deliver webhook to telephony vendor (Waybeo format)
+   */
+  async deliverTelephonyWebhook(callId, resultData, transcriptData) {
     if (!this.enabled) {
       console.log(`[${callId}] 📞 Telephony webhook disabled by config`);
       return;
     }
 
-    const payload = {
-      call_id: callId,
-      processed_at: resultData.processed_at,
-      success: resultData.success,
-      overall_status: resultData.extracted_data?.overall_status || 'incomplete'
-    };
+    // Check if Waybeo endpoint is configured
+    const waybeoEndpoint = process.env.WAYBEO_WEBHOOK_URL || 'https://pbx-uat.waybeo.com/bot-call';
+    const waybeoToken = process.env.WAYBEO_AUTH_TOKEN;
+    
+    if (!waybeoToken) {
+      console.warn(`[${callId}] ⚠️ Waybeo auth token not configured - skipping telephony webhook`);
+      return;
+    }
+
+    // Transform to Waybeo format
+    const payload = this.transformToWaybeoFormat(callId, resultData, transcriptData);
 
     try {
-      const response = await this.makeWebhookRequest(`${this.baseUrl}/api/webhooks/telephony`, payload);
-      console.log(`[${callId}] 📞 Telephony webhook delivered successfully:`, response.status);
+      const response = await this.makeWaybeoWebhookRequest(waybeoEndpoint, payload, waybeoToken);
+      console.log(`[${callId}] 📞 Waybeo webhook delivered successfully:`, response.status);
+      console.log(`[${callId}] 📊 Sent ${payload.parameters.length} parameters to Waybeo`);
     } catch (error) {
-      console.error(`[${callId}] ❌ Telephony webhook failed:`, error.message);
+      console.error(`[${callId}] ❌ Waybeo webhook failed:`, error.message);
     }
   }
 
@@ -552,6 +617,41 @@ class WebhookService {
       console.log(`[${callId}] 📊 Delivered: ${payload.response_data.length} data points, duration: ${payload.duration}s`);
     } catch (error) {
       console.error(`[${callId}] ❌ Single Interface webhook failed:`, error.message);
+    }
+  }
+
+  /**
+   * Make HTTP request to Waybeo with Bearer token authentication
+   */
+  async makeWaybeoWebhookRequest(url, payload, authToken, attempt = 1) {
+    try {
+      // Use dynamic import for fetch in Node.js
+      const { default: fetch } = await import('node-fetch');
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+          'User-Agent': 'VoiceAgent-Waybeo/2.0'
+        },
+        body: JSON.stringify(payload),
+        timeout: this.timeout
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      return response;
+    } catch (error) {
+      if (attempt < this.retryAttempts) {
+        console.log(`🔄 Waybeo webhook retry ${attempt + 1}/${this.retryAttempts}`);
+        await this.delay(1000 * attempt); // Exponential backoff
+        return this.makeWaybeoWebhookRequest(url, payload, authToken, attempt + 1);
+      }
+      throw error;
     }
   }
 
@@ -604,7 +704,7 @@ class WebhookService {
     try {
       // Deliver both webhooks in parallel (non-blocking)
       const promises = [
-        this.deliverTelephonyWebhook(callId, resultData),
+        this.deliverTelephonyWebhook(callId, resultData, transcriptData),
         this.deliverSingleInterfaceWebhook(callId, resultData, transcriptData)
       ];
 
