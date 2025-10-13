@@ -145,282 +145,19 @@ const resultsDir = path.join(process.cwd(), 'data', 'results');
   }
 });
 
-// 🎯 AGENTS SDK TOOLS - Ported for telephony use
-const telephonySDKTools = [
-  {
-    type: "function" as const,
-    name: "capture_sales_data",
-    description: "Capture and store individual pieces of sales lead information during the verification process",
-    parameters: {
-      type: "object",
-      properties: {
-        data_type: {
-          type: "string",
-          enum: ["full_name", "car_model", "email_id"],
-          description: "The type of sales data being captured"
-        },
-        value: {
-          type: "string", 
-          description: "The actual data value provided by the customer"
-        },
-        notes: {
-          type: "string",
-          description: "Any additional notes or context about this data point"
-        }
-      },
-      required: ["data_type", "value"],
-      additionalProperties: false,
-    }
-  },
-  {
-    type: "function" as const,
-    name: "verify_sales_data",
-    description: "Verify and confirm previously captured sales data with the customer",
-    parameters: {
-      type: "object",
-      properties: {
-        data_type: {
-          type: "string",
-          enum: ["full_name", "car_model", "email_id"],
-          description: "The type of sales data being verified"
-        },
-        confirmed: {
-          type: "boolean",
-          description: "Whether the customer confirmed this data as correct"
-        }
-      },
-      required: ["data_type", "confirmed"],
-      additionalProperties: false,
-    }
-  },
-  {
-    type: "function" as const,
-    name: "capture_all_sales_data",
-    description: "Capture all sales data at once when conversation is complete",
-    parameters: {
-      type: "object",
-      properties: {
-        full_name: { type: "string", description: "Complete name of the potential customer" },
-        car_model: { type: "string", description: "Specific car model they are interested in" },
-        email_id: { type: "string", description: "Customer's email address for follow-up" }
-      },
-      required: ["full_name", "car_model", "email_id"],
-      additionalProperties: false,
-    }
-  }
-];
+// 🎯 NO TOOLS - Telephony service only captures transcripts
+// Data extraction happens in queue processor AFTER the call
+const telephonySDKTools: any[] = [];
 
-// 🎯 SDK TOOL EXECUTION HANDLERS
-function handleSDKToolCall(session: Session, toolCall: any) {
-  const ucid = session.ucid;
-  const { name, parameters } = toolCall;
-  
-  console.log(`[${ucid}] 🔧 SDK Tool Called: ${name}`, parameters);
-  
-  switch (name) {
-    case 'capture_sales_data':
-      return handleCaptureSalesData(session, parameters);
-    case 'verify_sales_data':
-      return handleVerifySalesData(session, parameters);
-    case 'capture_all_sales_data':
-      return handleCaptureAllSalesData(session, parameters);
-    default:
-      console.warn(`[${ucid}] ❌ Unknown tool: ${name}`);
-      return { success: false, message: `Unknown tool: ${name}` };
-  }
-}
+// 🎯 NO TOOL HANDLERS NEEDED
+// Tools disabled - telephony only captures transcripts
+// Data extraction happens in queue processor after call ends
 
-function handleCaptureSalesData(session: Session, params: any) {
-  const { data_type, value, notes } = params;
-  const ucid = session.ucid;
-  
-  // 🎯 HYBRID APPROACH: Update session data (like current regex)
-  if (data_type === 'full_name') {
-    session.salesData.full_name = value;
-    session.lastCapturedData = 'full_name';
-  } else if (data_type === 'car_model') {
-    session.salesData.car_model = value;
-    session.lastCapturedData = 'car_model';
-  } else if (data_type === 'email_id') {
-    session.salesData.email_id = value;
-    session.lastCapturedData = 'email_id';
-  }
-  
-  console.log(`[${ucid}] 🎯 SDK Captured ${data_type}: ${value}${notes ? ` (${notes})` : ''}`);
-  
-  // Check if data is complete and save
-  checkDataCompletion(session);
-  
-  return {
-    success: true,
-    message: `Successfully captured ${data_type}: ${value}`,
-    data_type,
-    value,
-    status: 'captured'
-  };
-}
+// REMOVED: All handler functions - no real-time data extraction
+// Data extraction happens in queue processor after call ends
 
-function handleVerifySalesData(session: Session, params: any) {
-  const { data_type, confirmed } = params;
-  const ucid = session.ucid;
-  
-  if (confirmed) {
-    session.salesData.verified.add(data_type);
-    console.log(`[${ucid}] ✅ SDK Verified ${data_type}: Confirmed`);
-  } else {
-    // If not confirmed, remove the data and allow re-capture
-    if (data_type === 'full_name') session.salesData.full_name = undefined;
-    if (data_type === 'car_model') session.salesData.car_model = undefined;
-    if (data_type === 'email_id') session.salesData.email_id = undefined;
-    session.salesData.verified.delete(data_type);
-    console.log(`[${ucid}] ❌ SDK Verification ${data_type}: Rejected - data cleared`);
-  }
-  
-  return {
-    success: true,
-    message: `${data_type} ${confirmed ? 'confirmed' : 'rejected'}`,
-    data_type,
-    confirmed,
-    status: confirmed ? 'verified' : 'rejected'
-  };
-}
-
-function handleCaptureAllSalesData(session: Session, params: any) {
-  const { full_name, car_model, email_id } = params;
-  const ucid = session.ucid;
-  
-  // Capture all data at once
-  session.salesData.full_name = full_name;
-  session.salesData.car_model = car_model;
-  session.salesData.email_id = email_id;
-  
-  console.log(`[${ucid}] 🎯 SDK Captured All Data:`, { full_name, car_model, email_id });
-  
-  // Save complete data
-  saveSalesDataToFile(session);
-  
-  return {
-    success: true,
-    message: "All sales data captured successfully",
-    data: { full_name, car_model, email_id },
-    status: 'complete'
-  };
-}
-
-// Agent definition moved to separate module for better maintainability
-
-// Removed old agent processing - now using modular agent from ./agents/transcriptAgent
-
-// Handle data capture from agent with analytics
-// Handler functions removed - using simpler approach with modular agent
-
-// Data extraction function to simulate Spotlight agent tools (KEEP EXISTING - FALLBACK)
-function extractSalesData(session: Session, transcript: string) {
-  const ucid = session.ucid;
-  const text = transcript.toLowerCase();
-  
-  console.log(`[${ucid}] 🔍 Starting data extraction from: "${transcript}"`);
-  console.log(`[${ucid}] 🔍 Lowercase text: "${text}"`);
-  
-  // 🔧 CRITICAL FIX: Extract name patterns (allow overwriting for repeated info)
-  console.log(`[${ucid}] 🔍 Attempting name extraction...`);
-  const namePatterns = [
-    /my name is ([a-zA-Z\s\.]+)/i,
-    /i am ([a-zA-Z\s\.]+)/i,
-    /i'm ([a-zA-Z\s\.]+)/i,
-    /this is ([a-zA-Z\s\.]+)/i,
-    /call me ([a-zA-Z\s\.]+)/i,
-    /it is ([a-zA-Z\s\.]+)/i, // 🆕 NEW: Handle "It is [name]" format
-    // 🆕 NEW: Additional patterns for repeated names
-    /name[:\s]+([a-zA-Z\s\.]+)/i,
-    /([a-zA-Z]{2,}\.?[a-zA-Z]*\s+[a-zA-Z]{2,})/i // Two-word name pattern with optional dot
-  ];
-  
-  for (const pattern of namePatterns) {
-    const match = transcript.match(pattern);
-    if (match && match[1]) {
-      const name = match[1].trim();
-      if (name.length > 2 && name.length < 50 && !name.includes('hello') && !name.includes('yes') && !name.includes('ok')) {
-        const oldName = session.salesData.full_name;
-        session.salesData.full_name = name;
-        console.log(`[${ucid}] 📝 Captured Name: ${name}${oldName ? ` (updated from: ${oldName})` : ''}`);
-        break;
-      }
-    }
-  }
-  
-  // 🔧 CRITICAL FIX: Extract car model patterns (allow overwriting for repeated info)
-  console.log(`[${ucid}] 🔍 Attempting car model extraction...`);
-  const carBrands = ['toyota', 'honda', 'maruti', 'hyundai', 'tata', 'mahindra', 'ford', 'chevrolet', 'volkswagen', 'bmw', 'mercedes', 'audi', 'nissan', 'kia'];
-  const carModels = ['swift', 'baleno', 'dzire', 'vitara', 'ciaz', 'ertiga', 'xl6', 'brezza', 'city', 'amaze', 'jazz', 'wr-v', 'civic', 'accord', 'camry', 'innova', 'fortuner', 'corolla', 'i10', 'i20', 'venue', 'creta', 'verna', 'tucson', 'elantra', 'santafe'];
-  
-  for (const brand of carBrands) {
-    if (text.includes(brand)) {
-      for (const model of carModels) {
-        if (text.includes(model)) {
-          const carModel = `${brand.charAt(0).toUpperCase() + brand.slice(1)} ${model.charAt(0).toUpperCase() + model.slice(1)}`;
-          const oldModel = session.salesData.car_model;
-          session.salesData.car_model = carModel;
-          console.log(`[${ucid}] 🚗 Captured Car Model: ${carModel}${oldModel ? ` (updated from: ${oldModel})` : ''}`);
-          checkDataCompletion(session);
-          return;
-        }
-      }
-      // Just brand mentioned
-      const brandName = brand.charAt(0).toUpperCase() + brand.slice(1);
-      const oldModel = session.salesData.car_model;
-      session.salesData.car_model = brandName;
-      console.log(`[${ucid}] 🚗 Captured Car Brand: ${brandName}${oldModel ? ` (updated from: ${oldModel})` : ''}`);
-      checkDataCompletion(session);
-      return;
-    }
-  }
-  
-  // Generic car interest (only if no specific car is already captured)
-  if (!session.salesData.car_model) {
-    const carKeywords = ['car', 'vehicle', 'auto', 'sedan', 'suv', 'hatchback'];
-    for (const keyword of carKeywords) {
-      if (text.includes(keyword)) {
-        session.salesData.car_model = "General Car Interest";
-        console.log(`[${ucid}] 🚗 Captured General Interest: Car`);
-        break;
-      }
-    }
-  }
-  
-  // 🔧 CRITICAL FIX: Extract email patterns (allow overwriting for repeated info)
-  console.log(`[${ucid}] 🔍 Attempting email extraction...`);
-  
-  // Handle both "user@domain.com" and "user.name at domain.com" formats
-  const emailPatterns = [
-    /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/, // Standard format
-    /\b([A-Za-z0-9._%+-]+)\s+at\s+([A-Za-z0-9.-]+\.[A-Z|a-z]{2,})\b/i // "name at domain.com" format
-  ];
-  
-  for (const pattern of emailPatterns) {
-    const match = transcript.match(pattern);
-    if (match) {
-      let email;
-      if (match.length === 1) {
-        // Standard email format
-        email = match[0];
-      } else if (match.length >= 3) {
-        // "name at domain.com" format - reconstruct with @
-        email = `${match[1]}@${match[2]}`;
-      }
-      
-      if (email) {
-        const oldEmail = session.salesData.email_id;
-        session.salesData.email_id = email;
-        console.log(`[${ucid}] 📧 Captured Email: ${email}${oldEmail ? ` (updated from: ${oldEmail})` : ''}`);
-        break;
-      }
-    }
-  }
-  
-  // Check completion
-  checkDataCompletion(session);
-}
+// REMOVED: extractSalesData function - no real-time data extraction
+// All data extraction happens in queue processor after call ends
 
 // 🔄 NEW: Save complete transcript for async processing
 function saveTranscriptForProcessing(session: Session) {
@@ -647,28 +384,8 @@ function parseAgentOutput(output: string): { full_name?: string, car_model?: str
   return Object.keys(result).length > 0 ? result : null;
 }
 
-function checkDataCompletion(session: Session) {
-  const { full_name, car_model, email_id } = session.salesData;
-  const ucid = session.ucid;
-  
-  if (full_name && car_model && email_id) {
-    console.log(`[${ucid}] ✅ All sales data collected!`);
-    console.log(`[${ucid}] 📊 Sales Summary:`);
-    console.log(`[${ucid}]   Name: ${full_name}`);
-    console.log(`[${ucid}]   Car: ${car_model}`);
-    console.log(`[${ucid}]   Email: ${email_id}`);
-    
-    // Save complete data to file
-    saveSalesDataToFile(session);
-    
-    // Simulate push to LMS
-    console.log(`[${ucid}] 🚀 Pushing to SingleInterface LMS...`);
-    
-    // Extract brand for handoff message
-    const carBrand = car_model.split(' ')[0];
-    console.log(`[${ucid}] 🤝 Ready for handoff to ${carBrand} dealer`);
-  }
-}
+// REMOVED: checkDataCompletion function - no real-time data validation
+// Data validation happens in queue processor after call ends
 
 async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
   const apiKey = process.env.OPENAI_API_KEY as string;
@@ -928,90 +645,9 @@ async function handleConnection(ws: WebSocket) {
               if (event.type === 'conversation.item.created') {
                 console.log(`[${ucid}] 🗣️ Conversation Item Created:`, JSON.stringify(event.item, null, 2));
                 
-                // Handle function calls when created
+                // NO FUNCTION CALLS - Tools disabled, only transcript capture
                 if (event.item?.type === 'function_call' && event.item?.name) {
-                  console.log(`[${ucid}] 🔧 Function call created: ${event.item.name}`);
-                  
-                  let args: any = {};
-                  try {
-                    // 🔧 CRITICAL FIX: Enhanced argument parsing with corruption detection
-                    const rawArgs = event.item.arguments || '{}';
-                    console.log(`[${ucid}] 🔍 Raw function arguments:`, rawArgs);
-                    
-                    args = JSON.parse(rawArgs);
-                    
-                    // 🔧 CRITICAL FIX: Validate parsed arguments for corruption
-                    if (args.car_model && args.car_model.length < 3) {
-                      console.log(`[${ucid}] ⚠️ Potential corruption detected in car_model: "${args.car_model}"`);
-                      console.log(`[${ucid}] 📝 Recent transcripts for context:`, session?.transcripts || []);
-                      
-                      // Try to find car model from recent transcripts
-                      const recentTranscripts = session?.transcripts?.join(' ') || '';
-                      const carBrands = ['toyota', 'honda', 'maruti', 'hyundai', 'tata', 'mahindra', 'ford', 'chevrolet', 'volkswagen', 'bmw', 'mercedes', 'audi', 'nissan', 'kia', 'safari'];
-                      const carModels = ['swift', 'baleno', 'dzire', 'vitara', 'ciaz', 'ertiga', 'xl6', 'brezza', 'city', 'amaze', 'jazz', 'wr-v', 'civic', 'accord', 'camry', 'innova', 'fortuner', 'corolla', 'i10', 'i20', 'venue', 'creta', 'verna', 'tucson', 'elantra', 'santafe', 'safari'];
-                      
-                      for (const model of [...carBrands, ...carModels]) {
-                        if (recentTranscripts.toLowerCase().includes(model.toLowerCase())) {
-                          args.car_model = model.charAt(0).toUpperCase() + model.slice(1);
-                          console.log(`[${ucid}] 🔧 Corrected car_model from transcripts: "${args.car_model}"`);
-                          break;
-                        }
-                      }
-                    }
-                    
-                    console.log(`[${ucid}] 🎯 Parsed function arguments:`, args);
-                  } catch (e) {
-                    console.log(`[${ucid}] ❌ Could not parse function arguments:`, event.item.arguments);
-                    console.log(`[${ucid}] ❌ Parse error:`, e);
-                  }
-                  
-                  if (session && event.item.name) {
-                    // 🔍 CRITICAL FIX: Check if arguments are meaningful before execution
-                    const hasValidArgs = Object.keys(args).length > 0 && 
-                                        Object.values(args).some(val => val !== null && val !== undefined && val !== '');
-                    
-                    if (!hasValidArgs) {
-                      console.log(`[${ucid}] ⚠️ Skipping function call with empty/invalid args: ${event.item.name}`);
-                      console.log(`[${ucid}] 📝 Recent transcripts for context:`, session.transcripts || []);
-                      
-                      // Send a failure response to OpenAI
-                      if (event.item.call_id) {
-                        openaiWs.send(JSON.stringify({
-                          type: 'conversation.item.create',
-                          item: {
-                            type: 'function_call_output',
-                            call_id: event.item.call_id,
-                            output: JSON.stringify({
-                              success: false,
-                              message: `Function ${event.item.name} called with empty arguments - please provide proper parameters`,
-                              error: 'empty_arguments'
-                            })
-                          }
-                        }));
-                      }
-                      return; // Don't execute the function
-                    }
-                    
-                    console.log(`[${ucid}] 🎯 Executing function: ${event.item.name} with args:`, args);
-                    
-                    const result = handleSDKToolCall(session, {
-                      name: event.item.name,
-                      parameters: args
-                    });
-                    
-                    // Send result back to OpenAI if we have a call_id
-                    if (event.item.call_id) {
-                      openaiWs.send(JSON.stringify({
-                        type: 'conversation.item.create',
-                        item: {
-                          type: 'function_call_output',
-                          call_id: event.item.call_id,
-                          output: JSON.stringify(result)
-                        }
-                      }));
-                      console.log(`[${ucid}] 📤 Function result sent to OpenAI:`, result);
-                    }
-                  }
+                  console.log(`[${ucid}] ⚠️ Unexpected function call (tools disabled): ${event.item.name}`);
                 }
                 
                 // Handle user messages
@@ -1121,25 +757,7 @@ async function handleConnection(ws: WebSocket) {
               }
               
               if (event.type === 'response.function_call_done') {
-                console.log(`[${ucid}] 🎯 Function call completed:`, event.call);
-                if (session && event.call) {
-                  const result = handleSDKToolCall(session, {
-                    name: event.call.name,
-                    parameters: JSON.parse(event.call.arguments || '{}')
-                  });
-                  
-                  // Send tool result back to OpenAI
-                  openaiWs.send(JSON.stringify({
-                    type: 'conversation.item.create',
-                    item: {
-                      type: 'function_call_output',
-                      call_id: event.call.id,
-                      output: JSON.stringify(result)
-                    }
-                  }));
-                  
-                  console.log(`[${ucid}] 📤 Tool result sent to OpenAI:`, result);
-                }
+                console.log(`[${ucid}] ⚠️ Unexpected function call done event (tools disabled)`);
               }
 
             } catch (err) {
