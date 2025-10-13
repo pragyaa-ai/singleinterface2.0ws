@@ -400,7 +400,7 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
     });
 
     openaiWs.on('open', () => {
-      console.log(`[${ucid}] Connected to OpenAI Realtime API`);
+      console.log(`[${ucid}] Connected to VoiceAgent Realtime API`);
       
       // Configure session for Spotlight agent behavior with SDK tools
       const sessionConfig = {
@@ -518,7 +518,7 @@ Remember: Your success is measured by complete, accurate Mahindra sales data col
     });
 
     openaiWs.on('error', (err) => {
-      console.error(`[${ucid}] OpenAI error:`, err);
+      console.error(`[${ucid}] VoiceAgent error:`, err);
       reject(err);
     });
   });
@@ -591,12 +591,12 @@ async function handleConnection(ws: WebSocket) {
           };
           sessions.set(ucid, session);
 
-          // Handle responses from OpenAI (Spotlight-like behavior)
+          // Handle responses from VoiceAgent (Spotlight-like behavior)
           openaiWs.on('message', (data) => {
             try {
               const event = JSON.parse(data.toString());
               
-              // 🔍 DEBUG: Log important OpenAI events only
+              // 🔍 DEBUG: Log important VoiceAgent events only
               const importantEvents = [
                 'conversation.item.created',
                 'input_audio_buffer.speech_started', 
@@ -607,7 +607,7 @@ async function handleConnection(ws: WebSocket) {
               ];
               
               if (importantEvents.includes(event.type)) {
-                console.log(`[${ucid}] 🔍 OpenAI Event:`, event.type);
+                console.log(`[${ucid}] 🔍 VoiceAgent Event:`, event.type);
                 if (event.type !== 'response.audio.delta') {
                   console.log(`[${ucid}] 📋 Event Details:`, JSON.stringify(event, null, 2));
                 }
@@ -761,12 +761,12 @@ async function handleConnection(ws: WebSocket) {
               }
 
             } catch (err) {
-              console.error(`[${ucid}] ❌ OpenAI message parse error:`, err);
+              console.error(`[${ucid}] ❌ VoiceAgent message parse error:`, err);
             }
           });
 
         } catch (err) {
-          console.error(`[${ucid}] Failed to create OpenAI connection:`, err);
+          console.error(`[${ucid}] Failed to create VoiceAgent connection:`, err);
         }
         return;
       }
@@ -780,20 +780,20 @@ async function handleConnection(ws: WebSocket) {
           return;
         }
 
-        // Expect 8k mono 10ms frames (80 samples) - upsample to 24k for OpenAI
+        // Expect 8k mono 10ms frames (80 samples) - upsample to 24k for VoiceAgent
         const samples8k = ensureInt16Array(msg.data.samples);
         const samples24k = upsample8kTo24k(samples8k);
         const b64 = int16ArrayToBase64(samples24k);
 
         // console.log(`[${ucid}] Audio: 8kHz (${samples8k.length}) → 24kHz (${samples24k.length}) samples`); // DISABLED - too noisy
 
-        // Send upsampled 24kHz audio to OpenAI Realtime
+        // Send upsampled 24kHz audio to VoiceAgent Realtime
         session.openaiWs.send(JSON.stringify({
           type: 'input_audio_buffer.append',
           audio: b64,
         }));
 
-        // Let OpenAI's server_vad handle turn detection automatically
+        // Let VoiceAgent's server_vad handle turn detection automatically
         // Do NOT force response.create - let VAD detect when user stops speaking
         return;
       }

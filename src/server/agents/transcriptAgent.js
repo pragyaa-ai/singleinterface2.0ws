@@ -5,7 +5,7 @@ const path = require('path');
 async function processTranscript(transcript, sessionData = {}) {
   return new Promise((resolve) => {
     try {
-      console.log(`🤖 Running OpenAI Agent: "${transcript}"`);
+      console.log(`🤖 Running VoiceAgent: "${transcript}"`);
       
       const agentPath = path.join(__dirname, 'agentRunner.mjs');
       const child = spawn('node', [agentPath, transcript], {
@@ -28,7 +28,7 @@ async function processTranscript(transcript, sessionData = {}) {
         if (code === 0 && output) {
           try {
             const result = JSON.parse(output);
-            console.log(`✅ OpenAI Agent result:`, result);
+            console.log(`✅ VoiceAgent result:`, result);
             resolve(result);
           } catch (e) {
             console.log(`🔄 Agent output parse failed, using fallback`);

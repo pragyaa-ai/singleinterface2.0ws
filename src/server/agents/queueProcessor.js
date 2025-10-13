@@ -164,7 +164,7 @@ class QueueProcessor {
   // Run the async OpenAI Agent processor
   async runAsyncAgent(transcriptPath, callId) {
     return new Promise((resolve) => {
-      console.log(`[${callId}] 🤖 Running async OpenAI Agent...`);
+      console.log(`[${callId}] 🤖 Running async VoiceAgent...`);
       
       const agentPath = path.join(__dirname, 'asyncAgentProcessor.mjs');
       const child = spawn('node', [agentPath, transcriptPath], {

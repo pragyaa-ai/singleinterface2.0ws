@@ -115,7 +115,7 @@ ${conversationText}
 
 Please extract all available sales data with confidence scores and provide notes about the conversation quality.`;
 
-    console.error(`[${call_id}] 🚀 Running OpenAI Agent analysis...`);
+    console.error(`[${call_id}] 🚀 Running VoiceAgent analysis...`);
     const result = await run(fullContextAgent, agentPrompt);
     
     console.error(`[${call_id}] ✅ Agent processing completed`);
