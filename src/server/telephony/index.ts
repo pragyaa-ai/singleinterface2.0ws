@@ -207,6 +207,23 @@ const telephonySDKTools = [
       required: ["full_name", "car_model", "email_id"],
       additionalProperties: false,
     }
+  },
+  {
+    type: "function" as const,
+    name: "transfer_call",
+    description: "Transfer call to human agent/dealer",
+    parameters: {
+      type: "object",
+      properties: {
+        reason: {
+          type: "string",
+          enum: ["customer_requested", "data_complete", "unable_to_assist"],
+          description: "Reason for transfer"
+        }
+      },
+      required: ["reason"],
+      additionalProperties: false,
+    }
   }
 ];
 
@@ -224,6 +241,8 @@ function handleSDKToolCall(session: Session, toolCall: any) {
       return handleVerifySalesData(session, parameters);
     case 'capture_all_sales_data':
       return handleCaptureAllSalesData(session, parameters);
+    case 'transfer_call':
+      return handleTransferCall(session, parameters);
     default:
       console.warn(`[${ucid}] ❌ Unknown tool: ${name}`);
       return { success: false, message: `Unknown tool: ${name}` };
@@ -305,6 +324,85 @@ function handleCaptureAllSalesData(session: Session, params: any) {
     data: { full_name, car_model, email_id },
     status: 'complete'
   };
+}
+
+function handleTransferCall(session: Session, params: any) {
+  const { reason } = params;
+  const ucid = session.ucid;
+  
+  console.log(`[${ucid}] 📞 Call transfer requested - Reason: ${reason}`);
+  
+  // Save any captured data before transfer
+  const { full_name, car_model, email_id } = session.salesData;
+  if (full_name || car_model || email_id) {
+    console.log(`[${ucid}] 💾 Saving data before transfer:`, { full_name, car_model, email_id });
+    saveSalesDataToFile(session);
+  }
+  
+  // Execute Waybeo transfer API call
+  executeWaybeoTransfer(ucid, reason).then(() => {
+    console.log(`[${ucid}] ✅ Call transferred successfully`);
+    
+    // Close both websockets to end call and trigger async processing
+    console.log(`[${ucid}] 🔌 Closing connections after transfer...`);
+    session.openaiWs.close();
+    if (session.client.readyState === WebSocket.OPEN) {
+      session.client.close();
+    }
+    sessions.delete(ucid);
+    console.log(`[${ucid}] 🏁 Session ended - async processing will begin`);
+  }).catch(error => {
+    console.error(`[${ucid}] ❌ Transfer failed:`, error.message);
+  });
+  
+  return {
+    success: true,
+    message: "Call transfer initiated",
+    reason,
+    status: 'transferring'
+  };
+}
+
+async function executeWaybeoTransfer(callId: string, reason: string) {
+  const waybeoEndpoint = process.env.WAYBEO_WEBHOOK_URL || 'https://pbx-uat.waybeo.com/bot-call';
+  const waybeoToken = process.env.WAYBEO_AUTH_TOKEN;
+  
+  if (!waybeoToken) {
+    console.error(`[${callId}] ❌ Waybeo auth token not configured`);
+    throw new Error('Waybeo auth token not configured');
+  }
+  
+  const payload = {
+    command: "transfer",
+    callId: callId
+  };
+  
+  console.log(`[${callId}] 🔄 Initiating Waybeo transfer...`);
+  console.log(`[${callId}] 📡 Payload:`, JSON.stringify(payload));
+  
+  try {
+    const { default: fetch } = await import('node-fetch');
+    
+    const response = await fetch(waybeoEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${waybeoToken}`
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+    
+    console.log(`[${callId}] ✅ Waybeo transfer API successful`);
+    return response;
+  } catch (error: any) {
+    console.error(`[${callId}] ❌ Waybeo transfer API failed:`, error.message);
+    throw error;
+  }
 }
 
 // Agent definition moved to separate module for better maintainability
@@ -790,6 +888,12 @@ and mark as Need_expert_review.
 Once all three details are collected:
 Thank the customer: "Thank you so much for confirming all the details." / "Wonderful, I have noted everything down. Thank you for your time." / "Great, thanks a lot for providing these details."
 Then say: "We will now connect you with the Mahindra dealer near you.............. Please hold on."
+**After saying this, call the transfer_call tool with reason="data_complete"**
+
+# Transfer Protocol
+- If customer requests human agent ("I want to talk to dealer", "connect me to agent", etc.), immediately call transfer_call tool with reason="customer_requested"
+- After collecting all data and saying transfer message, call transfer_call tool with reason="data_complete"
+- If unable to assist after multiple attempts, call transfer_call tool with reason="unable_to_assist"
 
 Remember: Your success is measured by complete, accurate Mahindra sales data collection with warm, respectful Indian hospitality.`
         }
