@@ -392,7 +392,7 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
   if (!apiKey) throw new Error('OPENAI_API_KEY not set');
 
   // Configurable model - set VOICEAGENT_MODEL env var to switch models
-  // Options: gpt-4o-mini-realtime-preview-2024-12-17 (mini), gpt-4o-realtime-preview-2024-10-01 (standard)
+  // Options: gpt-4o-mini-realtime-preview-2024-12-17 (mini/default), gpt-realtime (latest standard model)
   const model = process.env.VOICEAGENT_MODEL || 'gpt-4o-mini-realtime-preview-2024-12-17';
   console.log(`[${ucid}] 🤖 Using model: ${model}`);
 

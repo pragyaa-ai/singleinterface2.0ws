@@ -59,9 +59,9 @@ You can switch between models using the `VOICEAGENT_MODEL` environment variable:
 export VOICEAGENT_MODEL="gpt-4o-mini-realtime-preview-2024-12-17"
 ```
 
-#### Option 2: Standard Model
+#### Option 2: Standard Model (Latest)
 ```bash
-export VOICEAGENT_MODEL="gpt-4o-realtime-preview-2024-10-01"
+export VOICEAGENT_MODEL="gpt-realtime"
 ```
 
 ### No Model Specified?
@@ -177,10 +177,10 @@ pm2 logs voiceagent-queue-processor --lines 100 | grep "webhook delivered"
 
 ## 🔄 Rollback
 
-If you need to switch back to standard model:
+If you need to switch to standard model:
 
 ```bash
-export VOICEAGENT_MODEL="gpt-4o-realtime-preview-2024-10-01"
+export VOICEAGENT_MODEL="gpt-realtime"
 pm2 restart voiceagent-telephony --update-env
 ```
 
@@ -192,7 +192,7 @@ pm2 restart voiceagent-telephony --update-env
 
 ## 📈 Performance Comparison
 
-| Feature | Mini Model (gpt-4o-mini) | Standard Model (gpt-4o) |
+| Feature | Mini Model (gpt-4o-mini) | Standard Model (gpt-realtime) |
 |---------|------------------------|----------------------------|
 | Multilingual | ✅ Yes | ✅ Yes |
 | Response Speed | ⚡ Faster | 🔵 Normal |
