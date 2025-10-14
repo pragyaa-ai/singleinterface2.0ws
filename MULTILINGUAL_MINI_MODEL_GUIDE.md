@@ -42,7 +42,7 @@ Each language has multiple variations for asking:
 
 ## 🤖 Model Configuration
 
-### Current Default: gpt-4o-realtime-preview-2024-12-17 (Mini Model)
+### Current Default: gpt-4o-mini-realtime-preview-2024-12-17 (Mini Model)
 
 The system is now configured to use the **mini model** by default, which offers:
 - ✅ Faster response times
@@ -56,12 +56,12 @@ You can switch between models using the `VOICEAGENT_MODEL` environment variable:
 
 #### Option 1: Mini Model (Default - Recommended)
 ```bash
-export VOICEAGENT_MODEL="gpt-4o-realtime-preview-2024-12-17"
+export VOICEAGENT_MODEL="gpt-4o-mini-realtime-preview-2024-12-17"
 ```
 
 #### Option 2: Standard Model
 ```bash
-export VOICEAGENT_MODEL="gpt-4o-realtime-preview-2025-06-03"
+export VOICEAGENT_MODEL="gpt-4o-realtime-preview-2024-10-01"
 ```
 
 ### No Model Specified?
@@ -79,7 +79,7 @@ git fetch origin v4.3.0-webhook-updates
 git reset --hard origin/v4.3.0-webhook-updates
 
 # Set model (optional - defaults to mini)
-export VOICEAGENT_MODEL="gpt-4o-realtime-preview-2024-12-17"
+export VOICEAGENT_MODEL="gpt-4o-mini-realtime-preview-2024-12-17"
 
 # Set Waybeo token
 export WAYBEO_AUTH_TOKEN="<your-token>"
@@ -90,7 +90,7 @@ pm2 save
 
 # Verify model in logs
 pm2 logs voiceagent-telephony --lines 20 | grep "Using model"
-# Should show: [UCID] 🤖 Using model: gpt-4o-realtime-preview-2024-12-17
+# Should show: [UCID] 🤖 Using model: gpt-4o-mini-realtime-preview-2024-12-17
 ```
 
 ### Permanent Configuration
@@ -98,7 +98,7 @@ pm2 logs voiceagent-telephony --lines 20 | grep "Using model"
 Add to `.env` file:
 ```bash
 # Model Configuration
-VOICEAGENT_MODEL=gpt-4o-realtime-preview-2024-12-17
+VOICEAGENT_MODEL=gpt-4o-mini-realtime-preview-2024-12-17
 
 # Required tokens
 OPENAI_API_KEY=<your-key>
@@ -180,7 +180,7 @@ pm2 logs voiceagent-queue-processor --lines 100 | grep "webhook delivered"
 If you need to switch back to standard model:
 
 ```bash
-export VOICEAGENT_MODEL="gpt-4o-realtime-preview-2025-06-03"
+export VOICEAGENT_MODEL="gpt-4o-realtime-preview-2024-10-01"
 pm2 restart voiceagent-telephony --update-env
 ```
 
@@ -192,7 +192,7 @@ pm2 restart voiceagent-telephony --update-env
 
 ## 📈 Performance Comparison
 
-| Feature | Mini Model (2024-12-17) | Standard Model (2025-06-03) |
+| Feature | Mini Model (gpt-4o-mini) | Standard Model (gpt-4o) |
 |---------|------------------------|----------------------------|
 | Multilingual | ✅ Yes | ✅ Yes |
 | Response Speed | ⚡ Faster | 🔵 Normal |
@@ -203,7 +203,7 @@ pm2 restart voiceagent-telephony --update-env
 ## 🎯 Recommended Setup
 
 For production use with multilingual support:
-- **Model**: `gpt-4o-realtime-preview-2024-12-17` (mini)
+- **Model**: `gpt-4o-mini-realtime-preview-2024-12-17` (mini)
 - **Languages**: All 6 enabled
 - **Temperature**: 0.8 (current setting)
 - **VAD Settings**: 300ms silence duration (current setting)
