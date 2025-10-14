@@ -145,19 +145,94 @@ const resultsDir = path.join(process.cwd(), 'data', 'results');
   }
 });
 
-// 🎯 NO TOOLS - Telephony service only captures transcripts
-// Data extraction happens in queue processor AFTER the call
-const telephonySDKTools: any[] = [];
+// 🎯 Transfer Tool - Hands off call to dealer after data collection
+const telephonySDKTools: any[] = [
+  {
+    type: "function" as const,
+    name: "transfer_call",
+    description: "Transfer the call to a Mahindra dealer. Use after collecting customer details OR if customer requests to speak with a human.",
+    parameters: {
+      type: "object",
+      properties: {
+        reason: {
+          type: "string",
+          enum: ["data_collected", "customer_request", "technical_issue"],
+          description: "Reason for transfer"
+        }
+      },
+      required: ["reason"]
+    }
+  }
+];
 
-// 🎯 NO TOOL HANDLERS NEEDED
-// Tools disabled - telephony only captures transcripts
-// Data extraction happens in queue processor after call ends
+// 🔄 TRANSFER HANDLER
+// Executes Waybeo transfer API to hand off call to dealer
 
-// REMOVED: All handler functions - no real-time data extraction
-// Data extraction happens in queue processor after call ends
+async function executeWaybeoTransfer(callId: string, reason: string): Promise<boolean> {
+  const waybeoUrl = process.env.WAYBEO_TRANSFER_URL || 'https://pbx-uat.waybeo.com/bot-call';
+  const authToken = process.env.WAYBEO_AUTH_TOKEN;
 
-// REMOVED: extractSalesData function - no real-time data extraction
-// All data extraction happens in queue processor after call ends
+  if (!authToken) {
+    console.error(`[${callId}] ❌ WAYBEO_AUTH_TOKEN not configured - cannot transfer call`);
+    return false;
+  }
+
+  const payload = {
+    command: "transfer",
+    callId: callId
+  };
+
+  console.log(`[${callId}] 🔄 Calling Waybeo Transfer API...`);
+  console.log(`[${callId}] 📤 Transfer payload:`, JSON.stringify(payload, null, 2));
+
+  try {
+    const response = await fetch(waybeoUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[${callId}] ❌ Waybeo transfer failed: HTTP ${response.status} - ${errorText}`);
+      return false;
+    }
+
+    const result = await response.json();
+    console.log(`[${callId}] ✅ Waybeo transfer successful:`, result);
+    return true;
+
+  } catch (error) {
+    console.error(`[${callId}] ❌ Waybeo transfer error:`, error);
+    return false;
+  }
+}
+
+async function handleTransferCall(session: Session, reason: string) {
+  const ucid = session.ucid;
+  
+  console.log(`[${ucid}] 🔄 Transfer requested - Reason: ${reason}`);
+  
+  // Save any transcript data collected so far
+  saveTranscriptForProcessing(session);
+  console.log(`[${ucid}] 💾 Transcript saved before transfer`);
+  
+  // Execute transfer API call
+  const transferSuccess = await executeWaybeoTransfer(ucid, reason);
+  
+  if (transferSuccess) {
+    console.log(`[${ucid}] ✅ Transfer API call successful`);
+    console.log(`[${ucid}] 🔍 OBSERVING: Waiting to see if Waybeo sends WebSocket close event...`);
+    // 🧪 TESTING: We're NOT manually closing connections here
+    // We want to observe if Waybeo sends a close event after transfer
+    // If they don't, we'll request this feature from them
+  } else {
+    console.error(`[${ucid}] ❌ Transfer API failed - call will continue`);
+  }
+}
 
 // 🔄 NEW: Save complete transcript for async processing
 function saveTranscriptForProcessing(session: Session) {
@@ -577,8 +652,14 @@ and mark as Need_expert_review.
 
 # Completion Protocol (MANDATORY)
 Once all three details are collected:
-Thank the customer: "Thank you so much for confirming all the details." / "Wonderful, I have noted everything down. Thank you for your time." / "Great, thanks a lot for providing these details."
-Then say: "We will now connect you with the Mahindra dealer near you.............. Please hold on."
+1. Thank the customer: "Thank you so much for confirming all the details." / "Wonderful, I have noted everything down. Thank you for your time."
+2. Say: "We will now connect you with the Mahindra dealer near you.............. Please hold on."
+3. **IMMEDIATELY call the transfer_call function** with reason "data_collected"
+
+## Transfer Protocol
+- **After collecting all 3 details**: Call transfer_call with reason "data_collected"
+- **If customer asks to speak with dealer/human**: Call transfer_call with reason "customer_request"
+- The customer will be automatically connected to the dealer
 
 Remember: Your success is measured by complete, accurate Mahindra sales data collection with warm, respectful Indian hospitality.`
         }
@@ -717,9 +798,9 @@ async function handleConnection(ws: WebSocket) {
               if (event.type === 'conversation.item.created') {
                 console.log(`[${ucid}] 🗣️ Conversation Item Created:`, JSON.stringify(event.item, null, 2));
                 
-                // NO FUNCTION CALLS - Tools disabled, only transcript capture
+                // Handle function call items
                 if (event.item?.type === 'function_call' && event.item?.name) {
-                  console.log(`[${ucid}] ⚠️ Unexpected function call (tools disabled): ${event.item.name}`);
+                  console.log(`[${ucid}] 🔧 Function call item: ${event.item.name}`);
                 }
                 
                 // Handle user messages
@@ -828,8 +909,50 @@ async function handleConnection(ws: WebSocket) {
                 console.log(`[${ucid}] 🔧 Function call delta:`, event);
               }
               
-              if (event.type === 'response.function_call_done') {
-                console.log(`[${ucid}] ⚠️ Unexpected function call done event (tools disabled)`);
+              if (event.type === 'response.function_call_arguments.done') {
+                const functionName = event.name;
+                const callId = event.call_id;
+                
+                console.log(`[${ucid}] 🔧 Function call completed: ${functionName}`);
+                console.log(`[${ucid}] 📋 Arguments:`, event.arguments);
+                
+                if (functionName === 'transfer_call') {
+                  if (!session) {
+                    console.error(`[${ucid}] ❌ No session found for transfer_call`);
+                    return;
+                  }
+                  
+                  try {
+                    const args = JSON.parse(event.arguments);
+                    const reason = args.reason || 'data_collected';
+                    
+                    console.log(`[${ucid}] 🔄 Processing transfer_call - Reason: ${reason}`);
+                    
+                    // Execute transfer
+                    handleTransferCall(session, reason).then(() => {
+                      // Send function output back to VoiceAgent
+                      if (session && session.openaiWs && session.openaiWs.readyState === WebSocket.OPEN) {
+                        session.openaiWs.send(JSON.stringify({
+                          type: 'conversation.item.create',
+                          item: {
+                            type: 'function_call_output',
+                            call_id: callId,
+                            output: JSON.stringify({ 
+                              success: true, 
+                              message: 'Transfer initiated successfully'
+                            })
+                          }
+                        }));
+                        
+                        // Trigger response
+                        session.openaiWs.send(JSON.stringify({ type: 'response.create' }));
+                      }
+                    });
+                    
+                  } catch (parseError) {
+                    console.error(`[${ucid}] ❌ Error parsing transfer_call arguments:`, parseError);
+                  }
+                }
               }
 
             } catch (err) {
@@ -897,9 +1020,11 @@ async function handleConnection(ws: WebSocket) {
     }
   });
 
-  ws.on('close', () => {
+  ws.on('close', (code, reason) => {
     if (session) {
-      console.log(`[${session.ucid}] 🔌 Connection closed - processing call data`);
+      console.log(`[${session.ucid}] 🔌 Connection closed - Code: ${code}, Reason: ${reason || 'No reason provided'}`);
+      console.log(`[${session.ucid}] 🔍 TESTING: This close event helps us know if Waybeo automatically closes after transfer`);
+      console.log(`[${session.ucid}] 📊 Processing call data...`);
       
       // 🔄 NEW: Save complete transcript for async processing
       const transcriptResult = saveTranscriptForProcessing(session);
