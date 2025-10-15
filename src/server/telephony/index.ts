@@ -3,7 +3,7 @@ import http from 'http';
 import WebSocket, { WebSocketServer } from 'ws';
 import fs from 'fs';
 import path from 'path';
-import { int16ArrayToBase64, ensureInt16Array, upsample8kTo24k, downsample24kTo8k } from './audio';
+import { int16ArrayToBase64, ensureInt16Array, upsample8kTo24k, downsample24kTo8k, initializeResamplers } from './audio';
 
 // 🔄 DECOUPLED ARCHITECTURE: Agent processing moved to async service
 // Telephony service now focuses only on call handling and transcript collection
@@ -1083,8 +1083,14 @@ async function handleConnection(ws: WebSocket) {
 
 wss.on('connection', handleConnection);
 
-server.listen(port, host, () => {
-  console.log(`[telephony] WebSocket server with Spotlight-like behavior listening on ws://${host}:${port}/ws`);
-});
+// Initialize high-quality audio resamplers before starting server
+(async () => {
+  console.log('🎵 Initializing high-quality audio resamplers...');
+  await initializeResamplers();
+  
+  server.listen(port, host, () => {
+    console.log(`[telephony] WebSocket server with Spotlight-like behavior listening on ws://${host}:${port}/ws`);
+  });
+})();
 
 
