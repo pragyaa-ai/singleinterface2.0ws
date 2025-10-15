@@ -4,8 +4,24 @@ import { create, ConverterType } from '@alexanderolsen/libsamplerate-js';
 // Environment variable to enable high-quality resampling (default: true for production)
 const USE_HIGH_QUALITY_RESAMPLING = process.env.USE_HIGH_QUALITY_RESAMPLING !== 'false';
 
+// Quality level: BEST (default) | MEDIUM | FASTEST
+// BEST = Highest quality, most CPU, may cause muffling
+// MEDIUM = Good balance of quality and speed
+// FASTEST = Lowest quality, least CPU, but no muffling
+const RESAMPLING_QUALITY = process.env.RESAMPLING_QUALITY || 'MEDIUM';
+
+// Map quality level to ConverterType
+const getQualityType = () => {
+  switch (RESAMPLING_QUALITY) {
+    case 'BEST': return ConverterType.SRC_SINC_BEST_QUALITY;
+    case 'MEDIUM': return ConverterType.SRC_SINC_MEDIUM_QUALITY;
+    case 'FASTEST': return ConverterType.SRC_SINC_FASTEST;
+    default: return ConverterType.SRC_SINC_MEDIUM_QUALITY;
+  }
+};
+
 // Log which resampling algorithm is being used
-console.log(`🎵 Audio Resampling: ${USE_HIGH_QUALITY_RESAMPLING ? 'HIGH-QUALITY (libsamplerate)' : 'SIMPLE (linear interpolation)'}`);
+console.log(`🎵 Audio Resampling: ${USE_HIGH_QUALITY_RESAMPLING ? `HIGH-QUALITY (libsamplerate - ${RESAMPLING_QUALITY})` : 'SIMPLE (linear interpolation)'}`);
 
 export function int16ArrayToBase64(int16: Int16Array): string {
   const bytes = new Uint8Array(int16.buffer, int16.byteOffset, int16.byteLength);
@@ -58,13 +74,15 @@ let resamplersInitialized = false;
 async function initializeResamplers() {
   if (!resamplersInitialized) {
     try {
+      const qualityType = getQualityType();
+      
       // Create upsampler: 8kHz -> 24kHz
       upsampler = await create(
         1,      // nChannels: mono
         8000,   // inputSampleRate
         24000,  // outputSampleRate
         {
-          converterType: ConverterType.SRC_SINC_BEST_QUALITY // Highest quality - same as librosa
+          converterType: qualityType
         }
       );
       
@@ -74,12 +92,12 @@ async function initializeResamplers() {
         24000,  // inputSampleRate
         8000,   // outputSampleRate
         {
-          converterType: ConverterType.SRC_SINC_BEST_QUALITY // Includes proper anti-aliasing filter
+          converterType: qualityType
         }
       );
       
       resamplersInitialized = true;
-      console.log('🎵 High-quality resamplers initialized successfully');
+      console.log(`🎵 High-quality resamplers initialized successfully (Quality: ${RESAMPLING_QUALITY})`);
     } catch (error) {
       console.error('❌ Failed to initialize high-quality resamplers:', error);
       // Fall back to simple resampling
@@ -92,7 +110,10 @@ async function initializeResamplers() {
 function int16ToFloat32(int16: Int16Array): Float32Array {
   const float32 = new Float32Array(int16.length);
   for (let i = 0; i < int16.length; i++) {
-    float32[i] = int16[i] / 32768.0; // Normalize: -32768..32767 -> -1..1
+    // Proper normalization: divide by 32768 for negative, 32767 for positive
+    // This avoids asymmetry that can cause distortion
+    const sample = int16[i];
+    float32[i] = sample < 0 ? sample / 32768.0 : sample / 32767.0;
   }
   return float32;
 }
