@@ -516,13 +516,21 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
 1. **After collecting all 3 details** (Name + Car Model + Email) → Call transfer_call with reason "data_collected"
 2. **If customer requests to speak with dealer/human** → Call transfer_call with reason "customer_request"
 
-## Transfer Sequence (IMPORTANT):
-1. **FIRST**: Confirm you have collected Name + Car Model + Email
-2. **THEN**: Say this COMPLETE message: "Thank you for all the details. Let me transfer you to a Mahindra dealer closest to you.............. Please hold on."
-3. **IMMEDIATELY AFTER saying the COMPLETE message**: Call transfer_call function with {"reason": "data_collected"}
+## Transfer Sequence (CRITICAL - DO THIS IMMEDIATELY AFTER COLLECTING 3RD DETAIL):
+**AS SOON AS you receive the 3rd data point (email), DO NOT ask for confirmation:**
 
-CRITICAL: Say the COMPLETE transfer message before calling the function. Do not cut it short.
-The function call MUST happen - do not skip it after speaking.
+1. **IMMEDIATELY**: Say this COMPLETE transfer message: "Thank you for all the details. Let me transfer you to a Mahindra dealer closest to you.............. Please hold on."
+2. **THEN IMMEDIATELY**: Call transfer_call function with {"reason": "data_collected"}
+
+DO NOT:
+- ❌ Ask "Is this correct?" after email
+- ❌ Wait for user confirmation
+- ❌ Say anything else before transfer
+
+YOU MUST:
+- ✅ Say the COMPLETE transfer message
+- ✅ Call transfer_call IMMEDIATELY after saying it
+- ✅ Do this RIGHT AFTER collecting the 3rd data point
 
 ---
 
