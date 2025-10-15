@@ -959,25 +959,30 @@ async function handleConnection(ws: WebSocket) {
                     
                     console.log(`[${ucid}] 🔄 Processing transfer_call - Reason: ${reason}`);
                     
-                    // Execute transfer
-                    handleTransferCall(session, reason).then(() => {
-                      // Send function output back to VoiceAgent
-                      if (session && session.openaiWs && session.openaiWs.readyState === WebSocket.OPEN) {
-                        session.openaiWs.send(JSON.stringify({
-                          type: 'conversation.item.create',
-                          item: {
-                            type: 'function_call_output',
-                            call_id: callId,
-                            output: JSON.stringify({ 
-                              success: true, 
-                              message: 'Transfer initiated successfully'
-                            })
-                          }
-                        }));
-                        
-                        // Trigger response
-                        session.openaiWs.send(JSON.stringify({ type: 'response.create' }));
-                      }
+                    // CRITICAL FIX: Send function response IMMEDIATELY (don't wait for transfer)
+                    // This allows agent to generate speech response without blocking
+                    if (session && session.openaiWs && session.openaiWs.readyState === WebSocket.OPEN) {
+                      session.openaiWs.send(JSON.stringify({
+                        type: 'conversation.item.create',
+                        item: {
+                          type: 'function_call_output',
+                          call_id: callId,
+                          output: JSON.stringify({ 
+                            success: true, 
+                            message: 'Transfer initiated successfully'
+                          })
+                        }
+                      }));
+                      
+                      // Trigger response - agent can now speak
+                      session.openaiWs.send(JSON.stringify({ type: 'response.create' }));
+                      
+                      console.log(`[${ucid}] ✅ Function response sent - agent can now generate speech`);
+                    }
+                    
+                    // Execute transfer in background (with delay) - doesn't block agent
+                    handleTransferCall(session, reason).catch(err => {
+                      console.error(`[${ucid}] ❌ Transfer execution error:`, err);
                     });
                     
                   } catch (parseError) {
