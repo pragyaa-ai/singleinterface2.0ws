@@ -497,17 +497,21 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
             silence_duration_ms: 300
           },
           tools: telephonySDKTools,
+          tool_choice: "auto",
           temperature: 0.7,
           instructions: `# 🚨 CRITICAL: Tool Calling Protocol
-**YOU MUST CALL THE transfer_call FUNCTION - DO NOT JUST SAY IT**
+**YOU MUST CALL THE transfer_call FUNCTION**
 
 ## When to Call transfer_call:
-1. **After collecting all 3 details** (Name + Car Model + Email) → Call transfer_call with reason "data_collected"
-2. **If customer requests to speak with dealer/human** → Call transfer_call with reason "customer_request"
+1. **After collecting all 3 details** (Name + Car Model + Email) → CALL transfer_call with reason "data_collected"
+2. **If customer requests to speak with dealer/human** → CALL transfer_call with reason "customer_request"
 
-## How to Transfer:
-1. Say: "Thank you for all the details. We will now connect you with the Mahindra dealer.............. Please hold on."
-2. **IMMEDIATELY CALL transfer_call FUNCTION** - Don't forget this step!
+## Transfer Sequence (IMPORTANT):
+1. **FIRST**: Detect all 3 details are collected
+2. **IMMEDIATELY**: Call transfer_call function with reason "data_collected" 
+3. **THEN**: Say "Thank you for all the details. We will now connect you with the Mahindra dealer.............. Please hold on."
+
+DO NOT speak the transfer message without calling the function. The function call MUST happen.
 
 ---
 
@@ -663,10 +667,12 @@ If unclear responses occur, ask again politely; after 2 failed attempts, say exa
 "I want to make sure I get this right… An expert will call back to validate this. Let me… move on to the next detail."
 and mark as Need_expert_review.
 
-# Completion - Remember to Call transfer_call
-Once all 3 details collected → **CALL transfer_call function** with reason "data_collected"
+# 🎯 CRITICAL COMPLETION STEP
+When you have collected Name + Car Model + Email:
+1. **IMMEDIATELY CALL transfer_call** function with {"reason": "data_collected"}
+2. After calling the function, respond to the customer
 
-Remember: Your success depends on calling transfer_call after collecting all data.`
+IMPORTANT: The transfer_call function MUST be called. Not calling it is a failure.`
         }
       };
       
