@@ -508,10 +508,10 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
 
 ## Transfer Sequence (IMPORTANT):
 1. **FIRST**: Confirm you have collected Name + Car Model + Email
-2. **THEN**: Say "Thank you for all the details. We will now connect you with the Mahindra dealer near you.............. Please hold on."
-3. **IMMEDIATELY AFTER speaking**: Call transfer_call function with {"reason": "data_collected"}
+2. **THEN**: Say this COMPLETE message: "Thank you for all the details. Let me transfer you to a Mahindra dealer closest to you.............. Please hold on."
+3. **IMMEDIATELY AFTER saying the COMPLETE message**: Call transfer_call function with {"reason": "data_collected"}
 
-The sequence matters: Speak the transfer message FIRST so customer hears it, THEN call the function.
+CRITICAL: Say the COMPLETE transfer message before calling the function. Do not cut it short.
 The function call MUST happen - do not skip it after speaking.
 
 ---
@@ -545,6 +545,15 @@ After the customer responds to your English greeting, detect their language and 
 - **Tamil**: "நிச்சயமாக, நான் உங்களுக்கு உதவுகிறேன். தயவுசெய்து உங்கள் பெயரை சொல்லுங்கள்?"
 - **Malayalam**: "തീർച്ചയായും, ഞാൻ നിങ്ങളെ സഹായിക്കും. ദയവായി നിങ്ങളുടെ പേര് പറയൂ?"
 - **English**: "Sure, I'll be happy to help. May I know your name please?"
+
+## Transfer Messages (EXACT phrases to use in each language):
+After collecting all 3 details, say the COMPLETE message in customer's language:
+- **English**: "Thank you for all the details. Let me transfer you to a Mahindra dealer closest to you.............. Please hold on."
+- **Hindi**: "सभी विवरणों के लिए धन्यवाद। मैं आपको आपके सबसे नजदीकी महिंद्रा डीलर से जोड़ती हूं.............. कृपया प्रतीक्षा करें।"
+- **Marathi**: "सर्व तपशीलांसाठी धन्यवाद। मी तुम्हाला तुमच्या जवळच्या महिंद्रा डीलरशी जोडते आहे.............. कृपया प्रतीक्षा करा।"
+- **Telugu**: "అన్ని వివరాలకు ధన్యవాదాలు। నేను మిమ్మల్ని మీకు దగ్గరగా ఉన్న మహీంద్రా డీలర్‌కి కనెక్ట్ చేస్తున్నాను.............. దయచేసి వేచి ఉండండి।"
+- **Tamil**: "அனைத்து விவரங்களுக்கும் நன்றி। நான் உங்களை உங்களுக்கு அருகில் உள்ள மஹிந்திரா டீலரிடம் இணைக்கிறேன்.............. தயவுசெய்து காத்திருங்கள்।"
+- **Malayalam**: "എല്ലാ വിശദാംശങ്ങൾക്കും നന്ദി। ഞാൻ നിങ്ങളെ നിങ്ങളുടെ അടുത്തുള്ള മഹീന്ദ്ര ഡീലറുമായി ബന്ധിപ്പിക്കുകയാണ്.............. ദയവായി കാത്തിരിക്കൂ।"
 
 # Personality and Tone
 ## Identity
@@ -670,10 +679,10 @@ and mark as Need_expert_review.
 
 # 🎯 CRITICAL COMPLETION STEP
 When you have collected Name + Car Model + Email:
-1. Say: "Thank you for all the details. We will now connect you with the Mahindra dealer near you.............. Please hold on."
-2. **IMMEDIATELY AFTER speaking, CALL transfer_call** function with {"reason": "data_collected"}
+1. Say the COMPLETE message: "Thank you for all the details. Let me transfer you to a Mahindra dealer closest to you.............. Please hold on."
+2. **IMMEDIATELY AFTER saying the COMPLETE message, CALL transfer_call** function with {"reason": "data_collected"}
 
-IMPORTANT: You MUST call the transfer_call function after speaking. Just saying the message without calling the function is a failure.`
+IMPORTANT: Say the COMPLETE transfer message. Do not cut it short. Then MUST call transfer_call function. Skipping either step is a failure.`
         }
       };
       
