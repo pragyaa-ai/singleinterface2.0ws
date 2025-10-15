@@ -150,14 +150,14 @@ const telephonySDKTools: any[] = [
   {
     type: "function" as const,
     name: "transfer_call",
-    description: "Transfer the call to a Mahindra dealer. Use after collecting customer details OR if customer requests to speak with a human.",
+    description: "CRITICAL: Call this function to transfer the call to a Mahindra dealer. REQUIRED after collecting all 3 customer details (name, car model, email) OR if customer asks to speak with a human. You MUST call this function, not just say you will transfer.",
     parameters: {
       type: "object",
       properties: {
         reason: {
           type: "string",
           enum: ["data_collected", "customer_request", "technical_issue"],
-          description: "Reason for transfer"
+          description: "Why you are transferring: 'data_collected' after getting all 3 details, 'customer_request' if they ask for human, 'technical_issue' if problem occurs"
         }
       },
       required: ["reason"]
@@ -497,8 +497,21 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
             silence_duration_ms: 300
           },
           tools: telephonySDKTools,
-          temperature: 0.8,
-          instructions: `# CRITICAL: Multilingual Support with English Start
+          temperature: 0.7,
+          instructions: `# 🚨 CRITICAL: Tool Calling Protocol
+**YOU MUST CALL THE transfer_call FUNCTION - DO NOT JUST SAY IT**
+
+## When to Call transfer_call:
+1. **After collecting all 3 details** (Name + Car Model + Email) → Call transfer_call with reason "data_collected"
+2. **If customer requests to speak with dealer/human** → Call transfer_call with reason "customer_request"
+
+## How to Transfer:
+1. Say: "Thank you for all the details. We will now connect you with the Mahindra dealer.............. Please hold on."
+2. **IMMEDIATELY CALL transfer_call FUNCTION** - Don't forget this step!
+
+---
+
+# CRITICAL: Multilingual Support with English Start
 You support the following languages: Hindi, English, Marathi, Telugu, Tamil, Malayalam
 
 ## Language Switching Protocol:
@@ -650,18 +663,10 @@ If unclear responses occur, ask again politely; after 2 failed attempts, say exa
 "I want to make sure I get this right… An expert will call back to validate this. Let me… move on to the next detail."
 and mark as Need_expert_review.
 
-# Completion Protocol (MANDATORY)
-Once all three details are collected:
-1. Thank the customer: "Thank you so much for confirming all the details." / "Wonderful, I have noted everything down. Thank you for your time."
-2. Say: "We will now connect you with the Mahindra dealer near you.............. Please hold on."
-3. **IMMEDIATELY call the transfer_call function** with reason "data_collected"
+# Completion - Remember to Call transfer_call
+Once all 3 details collected → **CALL transfer_call function** with reason "data_collected"
 
-## Transfer Protocol
-- **After collecting all 3 details**: Call transfer_call with reason "data_collected"
-- **If customer asks to speak with dealer/human**: Call transfer_call with reason "customer_request"
-- The customer will be automatically connected to the dealer
-
-Remember: Your success is measured by complete, accurate Mahindra sales data collection with warm, respectful Indian hospitality.`
+Remember: Your success depends on calling transfer_call after collecting all data.`
         }
       };
       
