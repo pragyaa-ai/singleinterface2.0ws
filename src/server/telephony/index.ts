@@ -500,18 +500,19 @@ async function createOpenAIConnection(ucid: string): Promise<WebSocket> {
           tool_choice: "auto",
           temperature: 0.7,
           instructions: `# 🚨 CRITICAL: Tool Calling Protocol
-**YOU MUST CALL THE transfer_call FUNCTION**
+**YOU MUST CALL THE transfer_call FUNCTION - NOT JUST SAY IT**
 
 ## When to Call transfer_call:
-1. **After collecting all 3 details** (Name + Car Model + Email) → CALL transfer_call with reason "data_collected"
-2. **If customer requests to speak with dealer/human** → CALL transfer_call with reason "customer_request"
+1. **After collecting all 3 details** (Name + Car Model + Email) → Call transfer_call with reason "data_collected"
+2. **If customer requests to speak with dealer/human** → Call transfer_call with reason "customer_request"
 
 ## Transfer Sequence (IMPORTANT):
-1. **FIRST**: Detect all 3 details are collected
-2. **IMMEDIATELY**: Call transfer_call function with reason "data_collected" 
-3. **THEN**: Say "Thank you for all the details. We will now connect you with the Mahindra dealer.............. Please hold on."
+1. **FIRST**: Confirm you have collected Name + Car Model + Email
+2. **THEN**: Say "Thank you for all the details. We will now connect you with the Mahindra dealer near you.............. Please hold on."
+3. **IMMEDIATELY AFTER speaking**: Call transfer_call function with {"reason": "data_collected"}
 
-DO NOT speak the transfer message without calling the function. The function call MUST happen.
+The sequence matters: Speak the transfer message FIRST so customer hears it, THEN call the function.
+The function call MUST happen - do not skip it after speaking.
 
 ---
 
@@ -669,10 +670,10 @@ and mark as Need_expert_review.
 
 # 🎯 CRITICAL COMPLETION STEP
 When you have collected Name + Car Model + Email:
-1. **IMMEDIATELY CALL transfer_call** function with {"reason": "data_collected"}
-2. After calling the function, respond to the customer
+1. Say: "Thank you for all the details. We will now connect you with the Mahindra dealer near you.............. Please hold on."
+2. **IMMEDIATELY AFTER speaking, CALL transfer_call** function with {"reason": "data_collected"}
 
-IMPORTANT: The transfer_call function MUST be called. Not calling it is a failure.`
+IMPORTANT: You MUST call the transfer_call function after speaking. Just saying the message without calling the function is a failure.`
         }
       };
       
