@@ -220,6 +220,16 @@ async function handleTransferCall(session: Session, reason: string) {
   saveTranscriptForProcessing(session);
   console.log(`[${ucid}] 💾 Transcript saved before transfer`);
   
+  // ⏰ CRITICAL: Add delay to allow agent to finish speaking before transferring
+  // The function call happens while agent is still generating speech
+  // We need to wait for speech to complete before calling Waybeo API
+  const speechCompletionDelay = 5000; // 5 seconds - allows complete message to be heard
+  console.log(`[${ucid}] ⏳ Waiting ${speechCompletionDelay}ms for agent to complete transfer message...`);
+  
+  await new Promise(resolve => setTimeout(resolve, speechCompletionDelay));
+  
+  console.log(`[${ucid}] ✅ Speech completion wait finished - executing transfer now`);
+  
   // Execute transfer API call
   const transferSuccess = await executeWaybeoTransfer(ucid, reason);
   
