@@ -1,3 +1,4 @@
+/// <reference path="../../../jitsi-rnnoise.d.ts" />
 // PCM16 (Int16) utilities for 8kHz mono audio
 import { create, ConverterType } from '@alexanderolsen/libsamplerate-js';
 import { createRNNWasmModuleSync } from '@jitsi/rnnoise-wasm';
