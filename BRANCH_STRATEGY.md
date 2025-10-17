@@ -68,30 +68,29 @@ This is NORMAL and EXPECTED - fallback mode is working correctly.
 
 ---
 
-### 🧪 `v4.3.4-rnnoise-compiled` - Experimental
+### ❌ `v4.3.4-rnnoise-compiled` - Experimental (FAILED)
 
-**Status**: 🧪 **EXPERIMENTAL** - Testing Only  
-**Use**: Testing full RNNoise with JavaScript compilation
+**Status**: ❌ **DEPRECATED** - ES Module Issues  
+**Use**: Do not use - kept for reference only
 
-**Features:**
-- ✅ Working call transfer (Waybeo API)
-- ✅ Multilingual support (6 languages)
-- ✅ Webhook delivery (SingleInterface + Waybeo)
-- ✅ Full RNNoise (95% noise reduction)
-- ✅ AI-powered noise suppression
-- ✅ Compiled TypeScript → JavaScript
+**Why It Failed:**
+- ❌ ES module/CommonJS conflict in Node.js/PM2
+- ❌ RNNoise requires ES modules (`import.meta`)
+- ❌ Cannot load ES modules without breaking Next.js
+- ❌ Dynamic `import()` fails in ts-node CommonJS mode
+- ❌ No viable solution without major infrastructure rewrite
 
-**Audio Quality:**
-- **95% noise reduction** with RNNoise AI
-- Crystal-clear voice
-- Professional audio quality
+**Attempted Solution:**
+- TypeScript → JavaScript compilation with ES modules
+- Compiled successfully but Node.js/PM2 couldn't run the output
+- Would require `"type": "module"` in package.json (breaks other components)
 
-**Deployment:** See `RNNOISE_COMPILED_EXPERIMENTAL.md`
+**Lessons Learned:**
+- RNNoise (Jitsi WASM) is incompatible with current CommonJS infrastructure
+- The 60-70% noise reduction from libsamplerate is sufficient
+- Extra 25-30% from RNNoise not worth the complexity
 
-**⚠️ WARNING**: Experimental only. Requires:
-1. TypeScript compilation step
-2. Running compiled JavaScript (not ts-node)
-3. Thorough testing before production
+**Recommendation:** Use `v4.3.0-webhook-updates` instead
 
 ---
 
@@ -99,65 +98,71 @@ This is NORMAL and EXPECTED - fallback mode is working correctly.
 
 | Feature | v4.3.3-live | v4.3.0-webhook-updates | v4.3.4-rnnoise-compiled |
 |---------|-------------|------------------------|-------------------------|
-| **Status** | 🟢 Stable | 🟢 Stable | 🧪 Experimental |
-| **Call Transfer** | ✅ | ✅ | ✅ |
-| **Webhooks** | ✅ | ✅ | ✅ |
-| **Multilingual** | ✅ | ✅ | ✅ |
-| **Resampling** | Simple | High-quality | High-quality |
-| **RNNoise AI** | ❌ | ❌ | ✅ |
-| **Noise Reduction** | ~0-20% | ~60-70% | ~95% |
-| **Click Prevention** | ❌ | ✅ | ✅ |
-| **Audio Quality** | Basic | Good | Excellent |
-| **Deployment** | Standard | Standard | Compile first |
-| **Risk Level** | Low | Low | Medium |
+| **Status** | 🟢 Stable | 🟢 **Stable (RECOMMENDED)** | ❌ **Failed** |
+| **Call Transfer** | ✅ | ✅ | ❌ Not deployed |
+| **Webhooks** | ✅ | ✅ | ❌ Not deployed |
+| **Multilingual** | ✅ | ✅ | ❌ Not deployed |
+| **Resampling** | Simple | High-quality | ❌ ES module issues |
+| **RNNoise AI** | ❌ | ❌ (fallback) | ❌ Incompatible |
+| **Noise Reduction** | ~0-20% | **~60-70%** | N/A |
+| **Click Prevention** | ❌ | ✅ | N/A |
+| **Audio Quality** | Basic | **Good** ⭐ | N/A |
+| **Deployment** | Standard | **Standard** | Failed |
+| **Risk Level** | Low | **Low** | N/A |
 
 ---
 
 ## 🎯 Recommended Usage
 
-### For Production NOW:
+### ⭐ For Production (RECOMMENDED):
 → **Use `v4.3.0-webhook-updates`**
-- Stable and tested
-- Good audio quality (~60-70% noise reduction)
-- No RNNoise complexity
-- Standard deployment
+- ✅ Stable and tested
+- ✅ Good audio quality (~60-70% noise reduction)
+- ✅ High-quality resampling (libsamplerate)
+- ✅ Click prevention
+- ✅ Call transfer working
+- ✅ Multilingual (6 languages)
+- ✅ Standard deployment
 
-### For Testing RNNoise:
-→ **Use `v4.3.4-rnnoise-compiled`**
-- Test on separate VM or port
-- Compile TypeScript first
-- Verify RNNoise initializes
-- Compare audio quality
+**This is the current production version on GCP VM.**
 
-### For Fallback:
+### For Fallback (If Needed):
 → **Use `v4.3.3-live`**
 - Known stable baseline
-- Simple and fast
+- Simple resampling (basic quality)
+- Fast and reliable
 - Quick rollback option
+
+### ❌ RNNoise Experiment:
+→ **`v4.3.4-rnnoise-compiled`** - FAILED
+- Do not use
+- ES module/CommonJS incompatibility
+- Kept for reference only
 
 ---
 
-## 🔄 Migration Path
+## ✅ Current Production Status
 
-### Current State:
 ```
-Production → v4.3.0-webhook-updates (60-70% noise reduction)
-              ↓
-              Works well, stable
+Production (GCP VM) → v4.3.0-webhook-updates
+                       ↓
+                   STABLE & WORKING ✅
+                       ↓
+              60-70% noise reduction
+              High-quality audio
+              All features working
 ```
 
-### To Test RNNoise:
+### RNNoise Experiment Result:
 ```
-1. Test Environment → v4.3.4-rnnoise-compiled
-                        ↓
-                   Test thoroughly
-                        ↓
-                   Compare audio quality
-                        ↓
-                   If excellent → consider production
-                        ↓
-                   If issues → stay on v4.3.0-webhook-updates
+v4.3.4-rnnoise-compiled → FAILED ❌
+                           ↓
+                  ES module incompatibility
+                           ↓
+                  Staying on v4.3.0-webhook-updates
 ```
+
+**Conclusion:** The current `v4.3.0-webhook-updates` version provides excellent audio quality with 60-70% noise reduction. The additional 25-30% from RNNoise is not achievable without major infrastructure changes.
 
 ---
 
