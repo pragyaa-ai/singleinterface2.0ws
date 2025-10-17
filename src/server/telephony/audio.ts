@@ -111,26 +111,29 @@ let denoiser: number | null = null;
 let rnnoiseReady = false;
 const RNNOISE_FRAME_SIZE = 480; // 10ms at 48kHz
 
-// Initialize RNNoise in background (non-blocking) - matches working test system
+// Initialize RNNoise in background (non-blocking) - using dynamic import for ES module compatibility
 function initializeNoiseSuppression() {
   if (!USE_NOISE_SUPPRESSION) {
     console.log('🔇 Noise Suppression: DISABLED');
     return;
   }
   
-  // Non-blocking initialization with setTimeout (from working test system)
+  // Non-blocking initialization with dynamic import (works in CommonJS!)
   setTimeout(() => {
     (async () => {
       try {
-        // Use require() with direct path to dist file (CommonJS compatible)
-        const createRNNWasmModuleSync = require('@jitsi/rnnoise-wasm/dist/rnnoise-sync.js').default;
+        // Dynamic import() works in CommonJS and can load ES modules
+        const rnnoiseWasm = await import('@jitsi/rnnoise-wasm');
+        const createRNNWasmModuleSync = rnnoiseWasm.createRNNWasmModuleSync;
+        
         rnnoiseModule = createRNNWasmModuleSync();
         await rnnoiseModule.ready;
         denoiser = rnnoiseModule._rnnoise_create(null);
         rnnoiseReady = true;
-        console.log('✅ [AUDIO] Jitsi RNNoise initialized (denoiser:', denoiser, ')');
+        console.log('✅ [AUDIO] Jitsi RNNoise initialized via dynamic import (denoiser:', denoiser, ')');
       } catch (error: any) {
-        console.warn('⚠️ [AUDIO] RNNoise not available, using basic audio processing:', error?.message || error);
+        console.error('❌ [AUDIO] RNNoise initialization failed:', error?.message || error);
+        console.warn('⚠️ [AUDIO] Falling back to audio processing without noise suppression');
         rnnoiseModule = null;
         denoiser = null;
         rnnoiseReady = false;
