@@ -1,18 +1,42 @@
 # RNNoise Compiled - Experimental Branch 🧪
 
 **Branch**: `v4.3.4-rnnoise-compiled`  
-**Status**: 🧪 **EXPERIMENTAL** - For Testing Only  
-**Date**: October 17, 2025
+**Status**: ❌ **DEPRECATED** - ES Module Issues Prevent Deployment  
+**Date**: October 17, 2025  
+**Result**: Could not be deployed due to ES module/CommonJS conflicts
+
+---
+
+## ⚠️ BRANCH DEPRECATED - DO NOT USE
+
+This experimental branch **FAILED** due to fundamental ES module/CommonJS conflicts in the Node.js/PM2 environment.
+
+### What Went Wrong:
+1. ✅ TypeScript compiled successfully to ES modules
+2. ❌ Node.js/PM2 cannot load ES modules without `"type": "module"` in package.json
+3. ❌ Adding `"type": "module"` would break Next.js and other parts of the system
+4. ❌ Dynamic `import()` still fails in ts-node CommonJS mode
+5. ❌ No viable solution without major infrastructure changes
+
+### Recommended Instead:
+**Use `v4.3.0-webhook-updates`** - Stable, working, good audio quality
+
+**Features**:
+- ✅ ~60-70% noise reduction (high-quality resampling + filters)
+- ✅ Call transfer working
+- ✅ Multilingual support (6 languages)
+- ✅ Standard deployment (no compilation needed)
+- ✅ All features stable
 
 ---
 
 ## ⚠️ IMPORTANT
 
-This is an **experimental branch** to test RNNoise with JavaScript compilation. Do NOT use in production without thorough testing.
+This is an **experimental branch** that did NOT work. Do NOT attempt to use in production.
 
 **For production, use**:
-- `v4.3.3-live` - Stable production (simple resampling, working transfer)
-- `v4.3.0-webhook-updates` - Current working (fallback audio: ~60-70% noise reduction)
+- ✅ **`v4.3.0-webhook-updates`** - **RECOMMENDED** (60-70% noise reduction, stable)
+- `v4.3.3-live` - Stable baseline (simple resampling, working transfer)
 
 ---
 
