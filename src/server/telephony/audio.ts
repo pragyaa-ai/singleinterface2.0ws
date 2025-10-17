@@ -1,5 +1,6 @@
 // PCM16 (Int16) utilities for 8kHz mono audio
 import { create, ConverterType } from '@alexanderolsen/libsamplerate-js';
+import { NoiseSuppressor } from '@sapphi-red/web-noise-suppressor';
 
 // Environment variable to enable high-quality resampling (default: true for production)
 const USE_HIGH_QUALITY_RESAMPLING = process.env.USE_HIGH_QUALITY_RESAMPLING !== 'false';
@@ -20,8 +21,12 @@ const getQualityType = () => {
   }
 };
 
-// Log which resampling algorithm is being used
+// Environment variable to enable RNNoise noise suppression (default: true for Waybeo)
+const USE_NOISE_SUPPRESSION = process.env.USE_NOISE_SUPPRESSION !== 'false';
+
+// Log which audio processing is being used
 console.log(`🎵 Audio Resampling: ${USE_HIGH_QUALITY_RESAMPLING ? `HIGH-QUALITY (libsamplerate - ${RESAMPLING_QUALITY})` : 'SIMPLE (linear interpolation)'}`);
+console.log(`🔇 Noise Suppression: ${USE_NOISE_SUPPRESSION ? 'ENABLED (RNNoise)' : 'DISABLED'}`);
 
 export function int16ArrayToBase64(int16: Int16Array): string {
   const bytes = new Uint8Array(int16.buffer, int16.byteOffset, int16.byteLength);
@@ -103,6 +108,52 @@ async function initializeResamplers() {
       // Fall back to simple resampling
       resamplersInitialized = false;
     }
+  }
+}
+
+// ========================================
+// NOISE SUPPRESSION (RNNoise)
+// ========================================
+// RNNoise uses a recurrent neural network to suppress background noise
+// while preserving voice quality - ideal for telephony applications
+
+let noiseSuppressor8k: NoiseSuppressor | null = null;
+let noiseSuppressionInitialized = false;
+
+// Initialize noise suppressor for 8kHz audio (telephony input)
+async function initializeNoiseSuppression() {
+  if (!noiseSuppressionInitialized && USE_NOISE_SUPPRESSION) {
+    try {
+      // RNNoise works best at 48kHz, but we'll use 8kHz for telephony input
+      noiseSuppressor8k = await NoiseSuppressor.Create(8000); // 8kHz sample rate
+      
+      noiseSuppressionInitialized = true;
+      console.log('🔇 RNNoise noise suppression initialized successfully (8kHz)');
+    } catch (error) {
+      console.error('❌ Failed to initialize noise suppression:', error);
+      noiseSuppressionInitialized = false;
+    }
+  }
+}
+
+// Apply noise suppression to 8kHz audio (before upsampling)
+function suppressNoise8k(samples8k: Int16Array): Int16Array {
+  if (!USE_NOISE_SUPPRESSION || !noiseSuppressor8k) {
+    return samples8k; // Return original if disabled or not initialized
+  }
+  
+  try {
+    // Convert Int16 -> Float32
+    const float32Input = int16ToFloat32(samples8k);
+    
+    // Process with RNNoise (modifies in-place)
+    const processedFloat32 = noiseSuppressor8k.process(float32Input);
+    
+    // Convert Float32 -> Int16
+    return float32ToInt16(processedFloat32);
+  } catch (error) {
+    console.error('❌ Noise suppression error:', error);
+    return samples8k; // Return original on error
   }
 }
 
@@ -188,15 +239,19 @@ function downsampleSimple(samples24k: Int16Array): Int16Array {
 // PUBLIC API - Configurable via Environment Variable
 // ========================================
 
-// Export initialization function for resamplers
-export { initializeResamplers };
+// Export initialization functions
+export { initializeResamplers, initializeNoiseSuppression };
 
-// Upsample 8kHz to 24kHz (3x)
+// Upsample 8kHz to 24kHz (3x) with optional noise suppression
 export function upsample8kTo24k(samples8k: Int16Array): Int16Array {
+  // Apply noise suppression BEFORE upsampling (if enabled)
+  const cleanSamples8k = suppressNoise8k(samples8k);
+  
+  // Then upsample to 24kHz
   if (USE_HIGH_QUALITY_RESAMPLING) {
-    return upsampleHighQuality(samples8k);
+    return upsampleHighQuality(cleanSamples8k);
   } else {
-    return upsampleSimple(samples8k);
+    return upsampleSimple(cleanSamples8k);
   }
 }
 
