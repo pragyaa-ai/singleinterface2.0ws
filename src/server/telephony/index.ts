@@ -3,7 +3,7 @@ import http from 'http';
 import WebSocket, { WebSocketServer } from 'ws';
 import fs from 'fs';
 import path from 'path';
-import { int16ArrayToBase64, ensureInt16Array, upsample8kTo24k, downsample24kTo8k, initializeResamplers, initializeNoiseSuppression } from './audio';
+import { int16ArrayToBase64, ensureInt16Array, upsample8kTo24k, downsample24kTo8k, initializeResamplers, initializeNoiseSuppression, initializeNoiseResamplers } from './audio';
 
 // 🔄 DECOUPLED ARCHITECTURE: Agent processing moved to async service
 // Telephony service now focuses only on call handling and transcript collection
@@ -1086,8 +1086,16 @@ wss.on('connection', handleConnection);
 // Initialize audio processing (resamplers + noise suppression) before starting server
 (async () => {
   console.log('🎵 Initializing audio processing...');
+  
+  // Initialize main resamplers (8kHz <-> 24kHz for OpenAI)
   await initializeResamplers();
-  await initializeNoiseSuppression();
+  
+  // Initialize RNNoise (synchronous - must be called before resampler init)
+  initializeNoiseSuppression();
+  
+  // Initialize RNNoise resamplers (8kHz <-> 48kHz for noise suppression)
+  await initializeNoiseResamplers();
+  
   console.log('✅ Audio processing initialized');
 
 server.listen(port, host, () => {

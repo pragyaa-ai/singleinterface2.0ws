@@ -12,6 +12,7 @@
   "dependencies": {
     "@alexanderolsen/libsamplerate-js": "^2.1.2",
     "@heroicons/react": "^2.2.0",
+    "@jitsi/rnnoise-wasm": "^0.2.1",
     "@openai/agents": "^0.0.5",
     "@radix-ui/react-icons": "^1.3.2",
     "@sapphi-red/web-noise-suppressor": "^0.3.5",
