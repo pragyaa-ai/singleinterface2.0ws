@@ -3,7 +3,7 @@ import http from 'http';
 import WebSocket, { WebSocketServer } from 'ws';
 import fs from 'fs';
 import path from 'path';
-import { int16ArrayToBase64, ensureInt16Array, upsample8kTo24k, downsample24kTo8k, initializeResamplers, initializeNoiseSuppression, initializeNoiseResamplers } from './audio';
+import { int16ArrayToBase64, ensureInt16Array, upsample8kTo24k, downsample24kTo8k, initializeResamplers, initializeNoiseSuppression, initializeNoiseResamplers, processAudioForOutput } from './audio';
 
 // 🔄 DECOUPLED ARCHITECTURE: Agent processing moved to async service
 // Telephony service now focuses only on call handling and transcript collection
@@ -798,31 +798,36 @@ async function handleConnection(ws: WebSocket) {
               }
               
               if (event.type === 'response.audio.delta' && event.delta) {
-                // Convert base64 to samples and downsample from 24kHz to 8kHz for Ozonetel
+                // Convert base64 to samples and process with RNNoise (if enabled) + downsample to 8kHz
                 const audioBuffer = Buffer.from(event.delta, 'base64');
                 const samples24k = new Int16Array(audioBuffer.buffer);
-                const samples8k = downsample24kTo8k(samples24k);
-                const samplesArray = Array.from(samples8k);
                 
-                // console.log(`[${ucid}] 🎵 Response: 24kHz (${samples24k.length}) → 8kHz (${samples8k.length}) samples`); // DISABLED - too noisy
-                
-                const payload = {
-                  event: 'media',
-                  type: 'media',
-                  ucid: ucid,
-                  data: {
-                    samples: samplesArray,
-                    bitsPerSample: 16,
+                // Process audio asynchronously with RNNoise pipeline (matching test system)
+                processAudioForOutput(samples24k).then(samples8k => {
+                  const samplesArray = Array.from(samples8k);
+                  
+                  // console.log(`[${ucid}] 🔊 Processed ${samples24k.length} samples (24kHz) → ${samples8k.length} samples (8kHz)`); // DISABLED - too noisy
+                  
+                  const payload = {
+                    event: 'media',
+                    type: 'media',
+                    ucid: ucid,
+                    data: {
+                      samples: samplesArray,
+                      bitsPerSample: 16,
                     sampleRate: 8000,
                     channelCount: 1,
-                    numberOfFrames: samplesArray.length,
-                    type: 'data' as const,
-                  },
-                };
-                
-                if (ws.readyState === WebSocket.OPEN) {
-                  ws.send(JSON.stringify(payload));
-                }
+                      numberOfFrames: samplesArray.length,
+                      type: 'data' as const,
+                    },
+                  };
+                  
+                  if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify(payload));
+                  }
+                }).catch(error => {
+                  console.error(`[${ucid}] ❌ Audio processing error:`, error);
+                });
               }
 
               // 🔍 ENHANCED: Log ALL conversation events
