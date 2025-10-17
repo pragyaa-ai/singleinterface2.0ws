@@ -1,0 +1,26 @@
+# Python Telephony Service Dependencies
+# For high-quality audio processing with librosa
+
+# WebSocket server and client
+websockets==12.0
+websocket-client==1.7.0
+
+# Audio processing (KEY: librosa for professional resampling)
+librosa==0.10.1
+numpy==1.24.3
+soundfile==0.12.1
+scipy==1.11.4
+
+# HTTP client for Waybeo API
+requests==2.31.0
+aiohttp==3.9.1
+
+# Environment configuration
+python-dotenv==1.0.0
+
+# Async file I/O
+aiofiles==23.2.1
+
+# JSON handling
+ujson==5.9.0
+
