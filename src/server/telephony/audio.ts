@@ -123,6 +123,7 @@ function initializeNoiseSuppression() {
     (async () => {
       try {
         // Dynamic import() works in CommonJS and can load ES modules
+        // @ts-ignore - Type definitions not available for dynamic import
         const rnnoiseWasm: any = await import('@jitsi/rnnoise-wasm');
         const createRNNWasmModuleSync = rnnoiseWasm.createRNNWasmModuleSync;
         
